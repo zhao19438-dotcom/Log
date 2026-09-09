@@ -1,0 +1,24 @@
+# 编译中间文件与输出目录
+*.o
+*.obj
+*.exe
+*.out
+*.app
+build/
+bin/
+
+# 日志输出目录与测试文件
+log/
+logs/
+*.log
+*.txt
+
+# 编辑器与IDE配置
+.vscode/
+.idea/
+*.swp
+*~
+
+# 操作系统临时文件
+.DS_Store
+Thumbs.db
