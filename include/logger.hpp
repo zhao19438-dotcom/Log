@@ -7,6 +7,7 @@
 #include "formatter.hpp"
 #include "sink.hpp"
 #include "looper.hpp"
+#include "config.hpp"
 
 #include <vector>
 #include <unordered_map>
@@ -58,7 +59,7 @@ public:
     LogLevel::value loggerLevel() const { return _level.load(); }
 
     // 检查日志级别是否满足输出门槛
-    bool shouldLog(LogLevel::value level) const {
+    BITLOG_NODISCARD bool shouldLog(LogLevel::value level) const {
         return level >= _level.load();
     }
 
@@ -111,6 +112,25 @@ public:
         log(LogLevel::value::FATAL, file, line, fmt, al);
         va_end(al);
     }
+
+#if BITLOG_HAS_SOURCE_LOCATION
+    // C++20 前沿特性：无宏优雅原生调用（自动注入调用者源文件名与代码行号）
+    void debug(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+        submit(LogLevel::value::DEBUG, loc.file_name(), loc.line(), std::string(msg));
+    }
+    void info(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+        submit(LogLevel::value::INFO, loc.file_name(), loc.line(), std::string(msg));
+    }
+    void warn(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+        submit(LogLevel::value::WARN, loc.file_name(), loc.line(), std::string(msg));
+    }
+    void error(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+        submit(LogLevel::value::ERROR, loc.file_name(), loc.line(), std::string(msg));
+    }
+    void fatal(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+        submit(LogLevel::value::FATAL, loc.file_name(), loc.line(), std::string(msg));
+    }
+#endif
 
 protected:
     void log(LogLevel::value level, const char *file, size_t line, const char *fmt, va_list al) {
