@@ -8,6 +8,7 @@
 #include <memory>
 #include <ctime>
 #include <cassert>
+#include <chrono>
 
 namespace bitlog {
 
@@ -42,16 +43,23 @@ public:
         if (_time_fmt.empty()) _time_fmt = "%Y-%m-%d %H:%M:%S";
     }
     void format(std::ostream &out, const LogMsg &msg) override {
-        time_t t = static_cast<time_t>(msg._ctime);
+        // time_t t = static_cast<time_t>(msg._ctime);
+        auto time_t_now = std::chrono::system_clock::to_time_t(msg._time);
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(msg._time.time_since_epoch()) % 1000;
+        
         struct tm tm_time;
 #ifdef _WIN32
-        localtime_s(&tm_time, &t);
+        localtime_s(&tm_time, &time_t_now);
 #else
-        localtime_r(&t, &tm_time);
+        localtime_r(&time_t_now, &tm_time);
 #endif
         char buf[128];
         strftime(buf, sizeof(buf), _time_fmt.c_str(), &tm_time);
-        out << buf;
+        
+        // 追加毫秒
+        char ms_buf[16];
+        snprintf(ms_buf, sizeof(ms_buf), ".%03d", static_cast<int>(ms.count()));
+        out << buf << ms_buf;
     }
 private:
     std::string _time_fmt;
