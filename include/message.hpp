@@ -14,9 +14,9 @@ struct LogMsg {
     std::chrono::system_clock::time_point _time; // 现代C++高精度时间戳
     LogLevel::value _level;     // 日志级别
     std::thread::id _tid;       // 产生日志的线程ID
-    std::string _file;          // 源文件名
+    const char* _file;          // 源文件名 (静态字符串常量的指针，避免拷贝)
     size_t _line;               // 代码行号
-    std::string _logger_name;   // 所属日志器名称
+    const std::string& _logger_name; // 所属日志器名称 (引用以避免多余复制)
     std::string _payload;       // 日志正文内容
 
     LogMsg(const std::string &name, 

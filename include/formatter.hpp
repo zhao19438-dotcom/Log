@@ -17,22 +17,22 @@ class FormatItem {
 public:
     using ptr = std::shared_ptr<FormatItem>;
     virtual ~FormatItem() = default;
-    virtual void format(std::ostream &out, const LogMsg &msg) = 0;
+    virtual void format(std::string &out, const LogMsg &msg) = 0;
 };
 
 // %m：日志正文
 class MsgFormatItem : public FormatItem {
 public:
-    void format(std::ostream &out, const LogMsg &msg) override {
-        out << msg._payload;
+    void format(std::string &out, const LogMsg &msg) override {
+        out.append(msg._payload);
     }
 };
 
 // %p：日志等级
 class LevelFormatItem : public FormatItem {
 public:
-    void format(std::ostream &out, const LogMsg &msg) override {
-        out << LogLevel::toString(msg._level);
+    void format(std::string &out, const LogMsg &msg) override {
+        out.append(LogLevel::toString(msg._level));
     }
 };
 
@@ -42,8 +42,7 @@ public:
     TimeFormatItem(const std::string &fmt = "%Y-%m-%d %H:%M:%S") : _time_fmt(fmt) {
         if (_time_fmt.empty()) _time_fmt = "%Y-%m-%d %H:%M:%S";
     }
-    void format(std::ostream &out, const LogMsg &msg) override {
-        // time_t t = static_cast<time_t>(msg._ctime);
+    void format(std::string &out, const LogMsg &msg) override {
         auto time_t_now = std::chrono::system_clock::to_time_t(msg._time);
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(msg._time.time_since_epoch()) % 1000;
         
@@ -59,7 +58,8 @@ public:
         // 追加毫秒
         char ms_buf[16];
         snprintf(ms_buf, sizeof(ms_buf), ".%03d", static_cast<int>(ms.count()));
-        out << buf << ms_buf;
+        out.append(buf);
+        out.append(ms_buf);
     }
 private:
     std::string _time_fmt;
@@ -68,48 +68,52 @@ private:
 // %f：源文件名
 class FileFormatItem : public FormatItem {
 public:
-    void format(std::ostream &out, const LogMsg &msg) override {
-        out << msg._file;
+    void format(std::string &out, const LogMsg &msg) override {
+        if (msg._file) {
+            out.append(msg._file);
+        }
     }
 };
 
 // %l：源文件行号
 class LineFormatItem : public FormatItem {
 public:
-    void format(std::ostream &out, const LogMsg &msg) override {
-        out << msg._line;
+    void format(std::string &out, const LogMsg &msg) override {
+        out.append(std::to_string(msg._line));
     }
 };
 
 // %t：线程ID
 class ThreadFormatItem : public FormatItem {
 public:
-    void format(std::ostream &out, const LogMsg &msg) override {
-        out << msg._tid;
+    void format(std::string &out, const LogMsg &msg) override {
+        std::ostringstream ss;
+        ss << msg._tid;
+        out.append(ss.str());
     }
 };
 
 // %c：日志器名称
 class LoggerFormatItem : public FormatItem {
 public:
-    void format(std::ostream &out, const LogMsg &msg) override {
-        out << msg._logger_name;
+    void format(std::string &out, const LogMsg &msg) override {
+        out.append(msg._logger_name);
     }
 };
 
 // %T：制表符
 class TabFormatItem : public FormatItem {
 public:
-    void format(std::ostream &out, const LogMsg &) override {
-        out << "\t";
+    void format(std::string &out, const LogMsg &) override {
+        out.append("\t");
     }
 };
 
 // %n：换行符
 class NLineFormatItem : public FormatItem {
 public:
-    void format(std::ostream &out, const LogMsg &) override {
-        out << "\n";
+    void format(std::string &out, const LogMsg &) override {
+        out.append("\n");
     }
 };
 
@@ -117,8 +121,8 @@ public:
 class OtherFormatItem : public FormatItem {
 public:
     OtherFormatItem(const std::string &str) : _str(str) {}
-    void format(std::ostream &out, const LogMsg &) override {
-        out << _str;
+    void format(std::string &out, const LogMsg &) override {
+        out.append(_str);
     }
 private:
     std::string _str;
@@ -134,16 +138,17 @@ public:
         assert(parsePattern());
     }
 
-    void format(std::ostream &out, const LogMsg &msg) {
+    void format(std::string &out, const LogMsg &msg) {
         for (auto &item : _items) {
             item->format(out, msg);
         }
     }
 
     std::string format(const LogMsg &msg) {
-        std::stringstream ss;
-        format(ss, msg);
-        return ss.str();
+        std::string out;
+        out.reserve(256);
+        format(out, msg);
+        return out;
     }
 
     const std::string &getPattern() const { return _pattern; }

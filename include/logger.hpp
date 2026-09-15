@@ -57,6 +57,7 @@ public:
 
     const std::string &loggerName() const { return _name; }
     LogLevel::value loggerLevel() const { return _level.load(); }
+    void setLevel(LogLevel::value level) { _level.store(level); }
 
     // 检查日志级别是否满足输出门槛
     LOG_NODISCARD bool shouldLog(LogLevel::value level) const {
@@ -67,68 +68,65 @@ public:
     void submit(LogLevel::value level, const char *file, size_t line, std::string &&msg) {
         if (!shouldLog(level)) return;
         LogMsg lm(_name, file, line, std::move(msg), level);
-        std::stringstream ss;
-        _formatter->format(ss, lm);
-        logIt(ss.str());
+        std::string out;
+        out.reserve(256);
+        _formatter->format(out, lm);
+        logIt(out);
     }
+
+#define LOG_VARIADIC_IMPL(level_val) \
+    if (!shouldLog(level_val)) return; \
+    va_list al; \
+    va_start(al, fmt); \
+    log(level_val, file, line, fmt, al); \
+    va_end(al)
 
     // 变参接口（C 风格）
     void debug(const char *file, size_t line, const char *fmt, ...) {
-        if (!shouldLog(LogLevel::value::DEBUG)) return;
-        va_list al;
-        va_start(al, fmt);
-        log(LogLevel::value::DEBUG, file, line, fmt, al);
-        va_end(al);
+        LOG_VARIADIC_IMPL(LogLevel::value::DEBUG);
     }
 
     void info(const char *file, size_t line, const char *fmt, ...) {
-        if (!shouldLog(LogLevel::value::INFO)) return;
-        va_list al;
-        va_start(al, fmt);
-        log(LogLevel::value::INFO, file, line, fmt, al);
-        va_end(al);
+        LOG_VARIADIC_IMPL(LogLevel::value::INFO);
     }
 
     void warn(const char *file, size_t line, const char *fmt, ...) {
-        if (!shouldLog(LogLevel::value::WARN)) return;
-        va_list al;
-        va_start(al, fmt);
-        log(LogLevel::value::WARN, file, line, fmt, al);
-        va_end(al);
+        LOG_VARIADIC_IMPL(LogLevel::value::WARN);
     }
 
     void error(const char *file, size_t line, const char *fmt, ...) {
-        if (!shouldLog(LogLevel::value::ERROR)) return;
-        va_list al;
-        va_start(al, fmt);
-        log(LogLevel::value::ERROR, file, line, fmt, al);
-        va_end(al);
+        LOG_VARIADIC_IMPL(LogLevel::value::ERROR);
     }
 
     void fatal(const char *file, size_t line, const char *fmt, ...) {
-        if (!shouldLog(LogLevel::value::FATAL)) return;
-        va_list al;
-        va_start(al, fmt);
-        log(LogLevel::value::FATAL, file, line, fmt, al);
-        va_end(al);
+        if (shouldLog(LogLevel::value::FATAL)) {
+            va_list al;
+            va_start(al, fmt);
+            log(LogLevel::value::FATAL, file, line, fmt, al);
+            va_end(al);
+        }
+        std::abort(); // fatal级别意味着严重错误，必须中止程序
     }
+
+#undef LOG_VARIADIC_IMPL
 
 #if LOG_HAS_SOURCE_LOCATION
     // C++20 前沿特性：无宏优雅原生调用（自动注入调用者源文件名与代码行号）
-    void debug(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+    void debug(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
         submit(LogLevel::value::DEBUG, loc.file_name(), loc.line(), std::string(msg));
     }
-    void info(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+    void info(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
         submit(LogLevel::value::INFO, loc.file_name(), loc.line(), std::string(msg));
     }
-    void warn(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+    void warn(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
         submit(LogLevel::value::WARN, loc.file_name(), loc.line(), std::string(msg));
     }
-    void error(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+    void error(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
         submit(LogLevel::value::ERROR, loc.file_name(), loc.line(), std::string(msg));
     }
-    void fatal(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+    void fatal(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
         submit(LogLevel::value::FATAL, loc.file_name(), loc.line(), std::string(msg));
+        std::abort();
     }
 #endif
 
@@ -255,20 +253,7 @@ public:
         _sinks.push_back(sink);
     }
 
-    virtual Logger::ptr build() = 0;
-
-protected:
-    Logger::Type _logger_type;
-    std::string _logger_name;
-    LogLevel::value _level;
-    Formatter::ptr _formatter;
-    std::vector<LogSink::ptr> _sinks;
-};
-
-// 本地局部日志器建造者（不注册进单例管理器）
-class LocalLoggerBuilder : public LoggerBuilder {
-public:
-    Logger::ptr build() override {
+    virtual Logger::ptr build() {
         if (_logger_name.empty()) {
             throw std::invalid_argument("[Log Error] Logger name cannot be empty");
         }
@@ -283,6 +268,18 @@ public:
         }
         return std::make_shared<SyncLogger>(_logger_name, _formatter, _sinks, _level);
     }
+
+protected:
+    Logger::Type _logger_type;
+    std::string _logger_name;
+    LogLevel::value _level;
+    Formatter::ptr _formatter;
+    std::vector<LogSink::ptr> _sinks;
+};
+
+// 本地局部日志器建造者（不注册进单例管理器）
+class LocalLoggerBuilder : public LoggerBuilder {
+    // 继承基类的 build 逻辑，直接返回生成的 Logger，不注册
 };
 
 class LoggerManager;
@@ -305,9 +302,10 @@ public:
         if (!logger) return;
         std::unique_lock<std::mutex> lock(_mutex);
         const auto &name = logger->loggerName();
-        if (_loggers.find(name) == _loggers.end()) {
-            _loggers[name] = logger;
+        if (_loggers.find(name) != _loggers.end()) {
+            throw std::invalid_argument("Logger already exists: " + name);
         }
+        _loggers[name] = logger;
     }
 
     bool hasLogger(const std::string &name) {
@@ -319,7 +317,7 @@ public:
         std::unique_lock<std::mutex> lock(_mutex);
         auto it = _loggers.find(name);
         if (it == _loggers.end()) {
-            return rootLogger();
+            throw std::invalid_argument("Logger not found: " + name);
         }
         return it->second;
     }
@@ -358,19 +356,7 @@ private:
 
 // 实现 GlobalLoggerBuilder::build
 inline Logger::ptr GlobalLoggerBuilder::build() {
-    assert(!_logger_name.empty());
-    if (!_formatter) {
-        _formatter = std::make_shared<Formatter>();
-    }
-    if (_sinks.empty()) {
-        buildSink<StdoutSink>();
-    }
-    Logger::ptr logger;
-    if (_logger_type == Logger::Type::LOGGER_ASYNC) {
-        logger = std::make_shared<AsyncLogger>(_logger_name, _formatter, _sinks, _level);
-    } else {
-        logger = std::make_shared<SyncLogger>(_logger_name, _formatter, _sinks, _level);
-    }
+    Logger::ptr logger = LoggerBuilder::build();
     LoggerManager::getInstance().addLogger(logger);
     return logger;
 }
