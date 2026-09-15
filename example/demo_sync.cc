@@ -23,12 +23,16 @@ int main() {
     logger::Logger::ptr l = builder->build();
 
     // 双前端交叉写入
-    LOG_INFO(l, "自定义同步日志器初始化完成，开始写入！");
+    LOG_INFO_TO(l, "自定义同步日志器初始化完成，开始写入！");
     LOG_S_DEBUG(l) << "正在扫描系统配置参数，耗时: " << 12.5 << "ms";
     LOG_S_WARN(l)  << "连接池满载预警，当前活动连接: " << 1024;
-    LOG_ERROR(l, "数据库查询异常，错误码: %d, 详情: %s", 500, "Connection Timeout");
+    LOG_ERROR_TO(l, "数据库查询异常，错误码: %d, 详情: %s", 500, "Connection Timeout");
 
-    std::cout << "\n同步演示完成！日志已同步记录到屏幕和 ./logs/sync.log 中。\n";
-    logger::LoggerManager::getInstance().shutdown();
+    std::cout << "\n=== 演示 3: 现代化 1 行极简初始化（全局托管 + 自动安全退出） ===\n";
+    logger::init_sync("./logs/app_quick.log");
+    LOG_INFO("极简 API 初始化完成！当前输出目标: 终端控制台 + ./logs/app_quick.log");
+    LOG_STREAM_INFO << "像使用 printf 一样直接调用，或者丝滑流式写入，进程退出无需手动 shutdown！";
+
+    std::cout << "\n同步演示完成！进程退出时将由 atexit 自动安全刷盘。\n";
     return 0;
 }

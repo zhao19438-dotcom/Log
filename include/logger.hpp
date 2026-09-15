@@ -326,6 +326,13 @@ public:
         return _root_logger;
     }
 
+    void setRootLogger(const Logger::ptr &logger) {
+        if (!logger) return;
+        std::unique_lock<std::mutex> lock(_mutex);
+        _root_logger = logger;
+        _loggers["root"] = logger;
+    }
+
     void shutdown() {
         if (_root_logger) {
             _root_logger->flush();
@@ -343,6 +350,11 @@ private:
         builder->buildLoggerName("root");
         _root_logger = builder->build();
         _loggers["root"] = _root_logger;
+    }
+
+    ~LoggerManager() {
+        // RAII 核心保证：当单例销毁时（进程退出），成员变量尚完全有效，自动安全刷盘排空
+        shutdown();
     }
 
     LoggerManager(const LoggerManager &) = delete;

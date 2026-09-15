@@ -67,48 +67,50 @@ Log 是一个轻量级、高性能的现代化 C++ 同步/异步日志系统。�
 本库为 Header-Only 设计，仅需将 `include/` 目录加入你的编译包含路径，并在源文件中引入头文件：
 
 ```cpp
-#include "logger.h"
+#include "log.h"
 ```
 
-### 2. 使用默认日志器（开箱即用）
+### 2. 开箱即用（极简 1 行上手）
 ```cpp
-#include "logger.h"
+#include "log.h"
 
 int main() {
-    // 变参调用
-    LOGI("系统服务启动成功，监听端口: %d", 8080);
-    LOGW("检测到内存占用超过阈值: %.1f%%", 85.5);
+    // 1. 纯控制台日志（零配置开箱即用）
+    LOG_INFO("系统服务启动成功，监听端口: %d", 8080);
+    LOG_WARN("检测到内存占用超过阈值: %.1f%%", 85.5);
+    LOG_STREAM_INFO << "用户登录: uid=" << 10001 << ", 用户名=" << "admin";
 
-    // 流式调用
-    LOG_INFO_S << "用户登录: uid=" << 10001 << ", 用户名=" << "admin";
-    LOG_ERROR_S << "支付网关响应失败，错误码: " << 504;
+    // 2. 现代化一行开启高性能异步日志（同时输出到控制台 + 滚动日志文件）
+    logger::init_async("./logs/server.log");
+    LOG_INFO("高性能双缓冲异步引擎已启动！");
+    LOG_STREAM_INFO << "像使用 printf 一样直接调用，进程退出由 RAII 自动安全刷盘！";
 
     return 0;
 }
 ```
 
-### 3. 使用 Builder 组装异步多落地日志器
+### 3. 高级用法：使用 Builder 定制多落地策略日志器
 ```cpp
-#include "logger.h"
+#include "log.h"
 
 int main() {
     // 1. 创建全局异步日志器建造者
     std::unique_ptr<logger::LoggerBuilder> builder(new logger::GlobalLoggerBuilder());
-    builder->buildLoggerName("server_logger");
+    builder->buildLoggerName("custom_logger");
     builder->buildLoggerLevel(logger::LogLevel::value::DEBUG);
     builder->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC);
     builder->buildFormatter("[%d{%Y-%m-%d %H:%M:%S}][%p][%c][%f:%l] %m%n");
 
     // 2. 同时挂载控制台与滚动日志文件（单文件最大 10MB）
     builder->buildSink<logger::StdoutSink>();
-    builder->buildSink<logger::RollSink>("./logs/server", 10 * 1024 * 1024);
+    builder->buildSink<logger::RollSink>("./logs/custom_roll", 10 * 1024 * 1024);
 
     // 3. 构建并自动注册进单例管理器
     logger::Logger::ptr logger = builder->build();
 
     // 4. 使用指定日志器输出
-    LOG_INFO(logger, "服务器开始监听新连接...");
-    LOG_S_WARN(logger) << "客户端 [192.168.1.50] 重试次数达上限: " << 5;
+    LOG_INFO_TO(logger, "自定义日志器开始监听新连接...");
+    LOG_STREAM_WARN_TO(logger) << "客户端 [192.168.1.50] 重试次数达上限: " << 5;
 
     return 0;
 }

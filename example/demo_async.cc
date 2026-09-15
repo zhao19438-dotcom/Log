@@ -27,10 +27,10 @@ int main() {
         workers.emplace_back([i, async_logger]() {
             for (int j = 0; j < 5; ++j) {
                 // 变参写入
-                LOG_INFO(async_logger, "Worker 线程 [%d] 执行任务阶段 A, 轮次: %d", i, j);
+                LOG_INFO_TO(async_logger, "Worker 线程 [%d] 执行任务阶段 A, 轮次: %d", i, j);
                 // 流式写入
-                LOG_S_WARN(async_logger) << "Worker 线程 [" << i << "] 执行任务阶段 B - 耗时: " 
-                                         << (j * 1.5) << "ms";
+                LOG_STREAM_WARN_TO(async_logger) << "Worker 线程 [" << i << "] 执行任务阶段 B - 耗时: " 
+                                                 << (j * 1.5) << "ms";
                 std::this_thread::sleep_for(std::chrono::milliseconds(5));
             }
         });
@@ -40,7 +40,11 @@ int main() {
         w.join();
     }
 
-    std::cout << "\n所有工作线程执行完毕！等待后台异步刷盘线程优雅退出...\n";
-    logger::LoggerManager::getInstance().shutdown();
+    std::cout << "\n=== 演示 4: 现代化 1 行初始化异步日志并全局使用 ===\n";
+    logger::init_async("./logs/app_async_quick.log");
+    LOG_INFO("极简异步初始化成功！线程安全的非阻塞双缓冲异步引擎已启动。");
+    LOG_STREAM_INFO << "无需手动调用 shutdown，进程正常退出时后台工作线程将由 atexit 自动优雅落盘并同步！";
+
+    std::cout << "\n所有工作线程执行完毕！进程退出...\n";
     return 0;
 }

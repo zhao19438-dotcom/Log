@@ -87,13 +87,19 @@ public:
 class ThreadFormatItem : public FormatItem {
 public:
     void format(std::string &out, const LogMsg &msg) override {
-        thread_local std::string tid_str;
-        if (tid_str.empty()) {
+        // 使用 POD 字符数组做线程本地缓存，无堆分配无析构，彻底避免 Windows MinGW TLS 析构崩溃
+        thread_local char tid_buf[32] = {0};
+        thread_local size_t tid_len = 0;
+        if (tid_len == 0) {
             std::ostringstream ss;
             ss << std::this_thread::get_id();
-            tid_str = ss.str();
+            std::string s = ss.str();
+            tid_len = s.size();
+            if (tid_len >= sizeof(tid_buf)) tid_len = sizeof(tid_buf) - 1;
+            memcpy(tid_buf, s.data(), tid_len);
+            tid_buf[tid_len] = '\0';
         }
-        out.append(tid_str);
+        out.append(tid_buf, tid_len);
     }
 };
 

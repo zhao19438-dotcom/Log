@@ -28,7 +28,7 @@ void bench(const std::string &logger_name, size_t thread_count, size_t msg_count
     for (size_t i = 0; i < thread_count; ++i) {
         threads.emplace_back([&, i]() {
             for (size_t j = 0; j < count_per_thread; ++j) {
-                LOG_INFO(l, "%s", payload.c_str());
+                LOG_INFO_TO(l, "%s", payload.c_str());
             }
         });
     }
