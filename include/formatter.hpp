@@ -87,9 +87,13 @@ public:
 class ThreadFormatItem : public FormatItem {
 public:
     void format(std::string &out, const LogMsg &msg) override {
-        std::ostringstream ss;
-        ss << msg._tid;
-        out.append(ss.str());
+        thread_local std::string tid_str;
+        if (tid_str.empty()) {
+            std::ostringstream ss;
+            ss << std::this_thread::get_id();
+            tid_str = ss.str();
+        }
+        out.append(tid_str);
     }
 };
 
@@ -135,7 +139,10 @@ public:
 
     Formatter(const std::string &pattern = "[%d{%Y-%m-%d %H:%M:%S}][%t][%p][%c][%f:%l] %m%n")
         : _pattern(pattern) {
-        assert(parsePattern());
+        if (!parsePattern()) {
+            std::cerr << "[Log Fatal] Formatter pattern parse failed: " << pattern << std::endl;
+            std::abort();
+        }
     }
 
     void format(std::string &out, const LogMsg &msg) {

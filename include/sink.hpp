@@ -24,6 +24,9 @@ public:
     void log(const char *data, size_t len) override {
         std::cout.write(data, len);
     }
+    void flush() override {
+        std::cout.flush();
+    }
 };
 
 // 2. 固定文件落地策略（常驻文件流句柄，高性能追加）
@@ -33,13 +36,22 @@ public:
         // 创建文件所在目录
         util::file::create_directory(util::file::path(pathname));
         _ofs.open(pathname, std::ios::binary | std::ios::app);
-        assert(_ofs.is_open());
+        if (!_ofs.is_open()) {
+            std::cerr << "[Log Fatal] 打开文件失败: " << _pathname << std::endl;
+            std::abort();
+        }
     }
 
     void log(const char *data, size_t len) override {
         _ofs.write(data, len);
         if (!_ofs.good()) {
             std::cerr << "[Log Error] 写入文件失败: " << _pathname << "\n";
+        }
+    }
+
+    void flush() override {
+        if (_ofs.is_open()) {
+            _ofs.flush();
         }
     }
 
@@ -63,7 +75,10 @@ public:
         util::file::create_directory(util::file::path(basename));
         std::string pathname = createNewFile();
         _ofs.open(pathname, std::ios::binary | std::ios::app);
-        assert(_ofs.is_open());
+        if (!_ofs.is_open()) {
+            std::cerr << "[Log Fatal] 打开滚动文件失败: " << pathname << std::endl;
+            std::abort();
+        }
     }
 
     void log(const char *data, size_t len) override {
@@ -71,7 +86,10 @@ public:
             _ofs.close();
             std::string pathname = createNewFile();
             _ofs.open(pathname, std::ios::binary | std::ios::app);
-            assert(_ofs.is_open());
+            if (!_ofs.is_open()) {
+                std::cerr << "[Log Fatal] 打开滚动文件失败: " << pathname << std::endl;
+                std::abort();
+            }
             _cur_fsize = 0;
         }
         _ofs.write(data, len);
@@ -79,6 +97,12 @@ public:
             std::cerr << "[Log Error] 写入滚动文件失败\n";
         }
         _cur_fsize += len;
+    }
+
+    void flush() override {
+        if (_ofs.is_open()) {
+            _ofs.flush();
+        }
     }
 
     ~RollSink() {
