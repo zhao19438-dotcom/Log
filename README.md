@@ -1,10 +1,10 @@
-# BitLog Plus: 现代化高性能 C++ 双前端异步日志系统
+# Log: 现代化高性能 C++ 双前端异步日志系统
 
 [![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B17)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Header Only](https://img.shields.io/badge/library-Header--Only-orange.svg)](#)
 
-BitLog Plus 是一个轻量级、高性能的现代化 C++ 同步/异步日志系统。采用纯头文件（Header-Only）设计，开箱即用。该项目支持 C 风格格式化与现代 C++ 流式接口双前端，底层采用双缓冲（Double Buffering）无锁/低锁机制、多落地策略扩展以及 Pattern 格式化模式解析，专为高性能服务器与分布式应用提供高吞吐、微秒级极速日志服务。
+Log 是一个轻量级、高性能的现代化 C++ 同步/异步日志系统。采用纯头文件（Header-Only）设计，开箱即用。该项目支持 C 风格格式化与现代 C++ 流式接口双前端，底层采用双缓冲（Double Buffering）无锁/低锁机制、多落地策略扩展以及 Pattern 格式化模式解析，专为高性能服务器与分布式应用提供高吞吐、微秒级极速日志服务。
 
 ---
 
@@ -67,12 +67,12 @@ BitLog Plus 是一个轻量级、高性能的现代化 C++ 同步/异步日志�
 本库为 Header-Only 设计，仅需将 `include/` 目录加入你的编译包含路径，并在源文件中引入头文件：
 
 ```cpp
-#include "bitlog.h"
+#include "logger.h"
 ```
 
 ### 2. 使用默认日志器（开箱即用）
 ```cpp
-#include "bitlog.h"
+#include "logger.h"
 
 int main() {
     // 变参调用
@@ -89,22 +89,22 @@ int main() {
 
 ### 3. 使用 Builder 组装异步多落地日志器
 ```cpp
-#include "bitlog.h"
+#include "logger.h"
 
 int main() {
     // 1. 创建全局异步日志器建造者
-    std::unique_ptr<bitlog::LoggerBuilder> builder(new bitlog::GlobalLoggerBuilder());
+    std::unique_ptr<logger::LoggerBuilder> builder(new logger::GlobalLoggerBuilder());
     builder->buildLoggerName("server_logger");
-    builder->buildLoggerLevel(bitlog::LogLevel::value::DEBUG);
-    builder->buildLoggerType(bitlog::Logger::Type::LOGGER_ASYNC);
+    builder->buildLoggerLevel(logger::LogLevel::value::DEBUG);
+    builder->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC);
     builder->buildFormatter("[%d{%Y-%m-%d %H:%M:%S}][%p][%c][%f:%l] %m%n");
 
     // 2. 同时挂载控制台与滚动日志文件（单文件最大 10MB）
-    builder->buildSink<bitlog::StdoutSink>();
-    builder->buildSink<bitlog::RollSink>("./logs/server", 10 * 1024 * 1024);
+    builder->buildSink<logger::StdoutSink>();
+    builder->buildSink<logger::RollSink>("./logs/server", 10 * 1024 * 1024);
 
     // 3. 构建并自动注册进单例管理器
-    bitlog::Logger::ptr logger = builder->build();
+    logger::Logger::ptr logger = builder->build();
 
     // 4. 使用指定日志器输出
     LOG_INFO(logger, "服务器开始监听新连接...");

@@ -1,5 +1,5 @@
-#ifndef __BITLOG_LOOPER_HPP__
-#define __BITLOG_LOOPER_HPP__
+#ifndef __LOG_LOOPER_HPP__
+#define __LOG_LOOPER_HPP__
 
 #include "buffer.hpp"
 #include <thread>
@@ -9,7 +9,7 @@
 #include <functional>
 #include <memory>
 
-namespace bitlog {
+namespace logger {
 
 // 异步工作线程控制器（双缓冲调度核心）
 class AsyncLooper {
@@ -85,6 +85,6 @@ private:
     std::thread _thread;
 };
 
-} // namespace bitlog
+} // namespace logger
 
-#endif // __BITLOG_LOOPER_HPP__
+#endif // __LOG_LOOPER_HPP__

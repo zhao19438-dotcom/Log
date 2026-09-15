@@ -1,9 +1,9 @@
-#ifndef __BITLOG_LEVEL_HPP__
-#define __BITLOG_LEVEL_HPP__
+#ifndef __LOG_LEVEL_HPP__
+#define __LOG_LEVEL_HPP__
 
 #include <string>
 
-namespace bitlog {
+namespace logger {
 
 // 日志等级枚举与辅助工具
 class LogLevel {
@@ -33,6 +33,6 @@ public:
     }
 };
 
-} // namespace bitlog
+} // namespace logger
 
-#endif // __BITLOG_LEVEL_HPP__
+#endif // __LOG_LEVEL_HPP__

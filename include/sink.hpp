@@ -1,5 +1,5 @@
-#ifndef __BITLOG_SINK_HPP__
-#define __BITLOG_SINK_HPP__
+#ifndef __LOG_SINK_HPP__
+#define __LOG_SINK_HPP__
 
 #include "util.hpp"
 #include <iostream>
@@ -8,14 +8,14 @@
 #include <sstream>
 #include <cassert>
 
-namespace bitlog {
+namespace logger {
 
-// 日志落地策略抽象基类
 class LogSink {
 public:
     using ptr = std::shared_ptr<LogSink>;
     virtual ~LogSink() = default;
     virtual void log(const char *data, size_t len) = 0;
+    virtual void flush() {}
 };
 
 // 1. 标准输出策略（终端打印）
@@ -39,7 +39,7 @@ public:
     void log(const char *data, size_t len) override {
         _ofs.write(data, len);
         if (!_ofs.good()) {
-            std::cerr << "[BitLog Error] 写入文件失败: " << _pathname << "\n";
+            std::cerr << "[Log Error] 写入文件失败: " << _pathname << "\n";
         }
     }
 
@@ -76,7 +76,7 @@ public:
         }
         _ofs.write(data, len);
         if (!_ofs.good()) {
-            std::cerr << "[BitLog Error] 写入滚动文件失败\n";
+            std::cerr << "[Log Error] 写入滚动文件失败\n";
         }
         _cur_fsize += len;
     }
@@ -122,6 +122,6 @@ public:
     }
 };
 
-} // namespace bitlog
+} // namespace logger
 
-#endif // __BITLOG_SINK_HPP__
+#endif // __LOG_SINK_HPP__

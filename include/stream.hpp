@@ -1,10 +1,10 @@
-#ifndef __BITLOG_STREAM_HPP__
-#define __BITLOG_STREAM_HPP__
+#ifndef __LOG_STREAM_HPP__
+#define __LOG_STREAM_HPP__
 
 #include "logger.hpp"
 #include <sstream>
 
-namespace bitlog {
+namespace logger {
 
 // 流式消息构建器（RAII 核心：临时对象在语句分号结束时自动析构，触发落盘提交）
 class StreamMessage {
@@ -34,12 +34,12 @@ private:
     std::stringstream _ss;
 };
 
-} // namespace bitlog
+} // namespace logger
 
 // 防悬垂 else 的流式短路宏封装
 // 如果当前日志级别不够输出，整条 << 链条直接被跳过，绝不产生多余计算与拼接开销
 #define LOG_STREAM(logger_ptr, level) \
     if (!(logger_ptr) || !(logger_ptr)->shouldLog(level)) ; \
-    else bitlog::StreamMessage((logger_ptr), (level), __FILE__, __LINE__)
+    else logger::StreamMessage((logger_ptr), (level), __FILE__, __LINE__)
 
-#endif // __BITLOG_STREAM_HPP__
+#endif // __LOG_STREAM_HPP__

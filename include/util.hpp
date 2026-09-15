@@ -1,5 +1,5 @@
-#ifndef __BITLOG_UTIL_HPP__
-#define __BITLOG_UTIL_HPP__
+#ifndef __LOG_UTIL_HPP__
+#define __LOG_UTIL_HPP__
 
 #include <iostream>
 #include <string>
@@ -9,13 +9,13 @@
 #ifdef _WIN32
 #include <direct.h>
 #include <io.h>
-#define BITLOG_MKDIR(path) _mkdir(path)
+#define LOG_MKDIR(path) _mkdir(path)
 #else
 #include <unistd.h>
-#define BITLOG_MKDIR(path) mkdir(path, 0775)
+#define LOG_MKDIR(path) mkdir(path, 0775)
 #endif
 
-namespace bitlog {
+namespace logger {
 namespace util {
 
 // 日期与时间工具类
@@ -53,18 +53,18 @@ public:
             std::string sub_path = pathname.substr(0, pos);
             if (!sub_path.empty() && sub_path != "." && sub_path != "..") {
                 if (!exists(sub_path)) {
-                    BITLOG_MKDIR(sub_path.c_str());
+                    LOG_MKDIR(sub_path.c_str());
                 }
             }
             pos++;
         }
         if (!exists(pathname)) {
-            BITLOG_MKDIR(pathname.c_str());
+            LOG_MKDIR(pathname.c_str());
         }
     }
 };
 
 } // namespace util
-} // namespace bitlog
+} // namespace logger
 
-#endif // __BITLOG_UTIL_HPP__
+#endif // __LOG_UTIL_HPP__

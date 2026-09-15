@@ -1,13 +1,14 @@
-#include "../include/bitlog.h"
+#include "../include/log.h"
 #include <vector>
 #include <thread>
 #include <chrono>
 #include <iomanip>
+#include <iostream>
 
 // 性能压测工具函数
 void bench(const std::string &logger_name, size_t thread_count, size_t msg_count, size_t msg_len) {
-    bitlog::Logger::ptr logger = bitlog::getLogger(logger_name);
-    if (!logger) {
+    logger::Logger::ptr l = logger::getLogger(logger_name);
+    if (!l) {
         std::cerr << "找不到日志器: " << logger_name << "\n";
         return;
     }
@@ -27,7 +28,7 @@ void bench(const std::string &logger_name, size_t thread_count, size_t msg_count
     for (size_t i = 0; i < thread_count; ++i) {
         threads.emplace_back([&, i]() {
             for (size_t j = 0; j < count_per_thread; ++j) {
-                LOG_INFO(logger, "%s", payload.c_str());
+                LOG_INFO(l, "%s", payload.c_str());
             }
         });
     }
@@ -51,23 +52,23 @@ void bench(const std::string &logger_name, size_t thread_count, size_t msg_count
 
 int main() {
     std::cout << "============================================================\n";
-    std::cout << "       BitLog Plus 同步 vs 异步日志性能压测基准测试          \n";
+    std::cout << "       Log 同步 vs 异步日志性能压测基准测试                  \n";
     std::cout << "============================================================\n";
 
     // 1. 创建同步测试日志器
-    std::unique_ptr<bitlog::LoggerBuilder> sync_builder(new bitlog::GlobalLoggerBuilder());
+    std::unique_ptr<logger::LoggerBuilder> sync_builder(new logger::GlobalLoggerBuilder());
     sync_builder->buildLoggerName("sync_bench");
-    sync_builder->buildLoggerType(bitlog::Logger::Type::LOGGER_SYNC);
+    sync_builder->buildLoggerType(logger::Logger::Type::LOGGER_SYNC);
     sync_builder->buildFormatter("%m%n");
-    sync_builder->buildSink<bitlog::FileSink>("./logs/sync_bench.log");
+    sync_builder->buildSink<logger::FileSink>("./logs/sync_bench.log");
     sync_builder->build();
 
     // 2. 创建异步测试日志器（双缓冲模式）
-    std::unique_ptr<bitlog::LoggerBuilder> async_builder(new bitlog::GlobalLoggerBuilder());
+    std::unique_ptr<logger::LoggerBuilder> async_builder(new logger::GlobalLoggerBuilder());
     async_builder->buildLoggerName("async_bench");
-    async_builder->buildLoggerType(bitlog::Logger::Type::LOGGER_ASYNC);
+    async_builder->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC);
     async_builder->buildFormatter("%m%n");
-    async_builder->buildSink<bitlog::FileSink>("./logs/async_bench.log");
+    async_builder->buildSink<logger::FileSink>("./logs/async_bench.log");
     async_builder->build();
 
     // 压测参数：50万条日志，单条100字节

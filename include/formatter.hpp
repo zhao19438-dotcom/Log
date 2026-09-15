@@ -1,5 +1,5 @@
-#ifndef __BITLOG_FORMATTER_HPP__
-#define __BITLOG_FORMATTER_HPP__
+#ifndef __LOG_FORMATTER_HPP__
+#define __LOG_FORMATTER_HPP__
 
 #include "message.hpp"
 #include <iostream>
@@ -10,7 +10,7 @@
 #include <cassert>
 #include <chrono>
 
-namespace bitlog {
+namespace logger {
 
 // 格式化子项抽象基类
 class FormatItem {
@@ -175,7 +175,7 @@ private:
             }
             pos++; // 跳过 '%'
             if (pos >= len) {
-                std::cerr << "[BitLog Error] % 处于末尾位置！\n";
+                std::cerr << "[Log Error] % 处于末尾位置！\n";
                 return false;
             }
             key = _pattern[pos++];
@@ -184,7 +184,7 @@ private:
                 size_t start = pos + 1;
                 size_t end = _pattern.find('}', start);
                 if (end == std::string::npos) {
-                    std::cerr << "[BitLog Error] 格式串花括号未闭合！\n";
+                    std::cerr << "[Log Error] 格式串花括号未闭合！\n";
                     return false;
                 }
                 val = _pattern.substr(start, end - start);
@@ -221,7 +221,7 @@ private:
             } else if (rule.first == "T") {
                 _items.push_back(std::make_shared<TabFormatItem>());
             } else {
-                std::cerr << "[BitLog Warning] 未知格式化标识符: %" << rule.first << "\n";
+                std::cerr << "[Log Warning] 未知格式化标识符: %" << rule.first << "\n";
                 _items.push_back(std::make_shared<OtherFormatItem>(rule.first));
             }
         }
@@ -233,6 +233,6 @@ private:
     std::vector<FormatItem::ptr> _items;
 };
 
-} // namespace bitlog
+} // namespace logger
 
-#endif // __BITLOG_FORMATTER_HPP__
+#endif // __LOG_FORMATTER_HPP__

@@ -1,10 +1,10 @@
-# BitLog Plus：现代化 C++17 高性能同步与异步日志系统技术手册
+# Log：现代化 C++17 高性能同步与异步日志系统技术手册
 
 ---
 
 ## 1. 项目介绍
 
-**BitLog Plus** 是一个基于现代 C++17 标准构建的轻量级、高吞吐、低延迟日志系统。项目综合运用了多种经典设计模式（单例模式、工厂模式、策略模式、建造者模式、代理模式），并结合操作系统底层并发机制，实现了业务线程非阻塞的双缓冲区异步写入引擎。
+**Log** 是一个基于现代 C++17 标准构建的轻量级、高吞吐、低延迟日志系统。项目综合运用了多种经典设计模式（单例模式、工厂模式、策略模式、建造者模式、代理模式），并结合操作系统底层并发机制，实现了业务线程非阻塞的双缓冲区异步写入引擎。
 
 ### 1.1 核心功能特性
 * **多级别日志过滤**：支持 `DEBUG`、`INFO`、`WARN`、`ERROR`、`FATAL`、`OFF` 六大日志等级，支持编译期与运行期过滤。
@@ -59,9 +59,9 @@
 
 ### 4.1 源码目录组织
 ```text
-bitlog_plus/
+logger_plus/
 ├── include/                  # 核心头文件库 (Header-only)
-│   ├── bitlog.h              # 对外统一全局门面头文件
+│   ├── logger.h              # 对外统一全局门面头文件
 │   ├── buffer.hpp            # 动态双缓冲区实现
 │   ├── config.hpp            # 跨标准版本探测与特性分水岭
 │   ├── formatter.hpp         # 模式化日志格式化器
@@ -84,7 +84,7 @@ bitlog_plus/
 ```
 
 ### 4.2 编译与运行
-项目采用纯头文件（Header-only）配合模块化封装，无需单独编译动态库或静态库，直接在业务代码中引入 `#include "bitlog.h"` 即可。
+项目采用纯头文件（Header-only）配合模块化封装，无需单独编译动态库或静态库，直接在业务代码中引入 `#include "logger.h"` 即可。
 
 ```bash
 # 编译并运行示例程序
@@ -139,11 +139,11 @@ make
 * **C++ 流式 RAII 代理（Stream Frontend）**：
   为避免 C 风格 `printf` 带来的类型不安全与格式符匹配错误，我们设计了 `LogStream` 辅助类。
   ```cpp
-  #define LOG_INFO_S LOG_STREAM(bitlog::rootLogger(), bitlog::LogLevel::value::INFO)
+  #define LOG_INFO_S LOG_STREAM(logger::rootLogger(), logger::LogLevel::value::INFO)
   ```
   该宏结合条件短路求值：
   ```cpp
-  if (logger && logger->shouldLog(level)) bitlog::LogStream(...)
+  if (logger && logger->shouldLog(level)) logger::LogStream(...)
   ```
   当日志级别不满足输出条件时，后续的所有 `<<` 运算及自定义函数调用全部被直接短路跳过，实现**零成本抽象**。而在语句执行结束时，临时对象析构自动将整行内容一次性提交至日志器，保证了并发输出的原子性。
 
@@ -315,22 +315,22 @@ void worker_loop() {
 
 ### 9.1 使用建造者模式构建日志器
 ```cpp
-#include "bitlog.h"
+#include "logger.h"
 
 int main() {
     // 1. 构建异步日志器
-    auto builder = std::make_shared<bitlog::GlobalLoggerBuilder>();
+    auto builder = std::make_shared<logger::GlobalLoggerBuilder>();
     builder->buildLoggerName("server_logger")
-           ->buildLoggerLevel(bitlog::LogLevel::value::DEBUG)
-           ->buildLoggerType(bitlog::Logger::Type::LOGGER_ASYNC)
+           ->buildLoggerLevel(logger::LogLevel::value::DEBUG)
+           ->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC)
            ->buildFormatter("[%d][%t][%p][%c] %m%n")
-           ->buildSink<bitlog::StdoutSink>()
-           ->buildSink<bitlog::FileSink>("./logs/server.log")
-           ->buildSink<bitlog::RollSink>("./logs/roll_log", 10 * 1024 * 1024) // 10MB 滚动
+           ->buildSink<logger::StdoutSink>()
+           ->buildSink<logger::FileSink>("./logs/server.log")
+           ->buildSink<logger::RollSink>("./logs/roll_log", 10 * 1024 * 1024) // 10MB 滚动
            ->build();
 
     // 2. 获取已注册的全局日志器
-    auto logger = bitlog::getLogger("server_logger");
+    auto logger = logger::getLogger("server_logger");
 
     // 3. C 风格宏调用
     LOG_INFO(logger, "Server started on port %d, worker count: %d", 8080, 4);
@@ -391,4 +391,4 @@ $$\text{Data Rate (MB/s)} = \frac{\text{Total Size (MB)}}{\text{Max Elapsed Time
 
 ## 12. 总结
 
-BitLog Plus 是一套严格遵循工业级规范、兼顾高性能与极致开发体验的现代 C++ 日志引擎。系统深入探讨并攻克了高并发场景下 I/O 阻塞、锁竞争激烈、时序失真等核心难题，是现代 C++ 语言特性与经典系统设计模式深度融合的完整实践。
+Log 是一套严格遵循工业级规范、兼顾高性能与极致开发体验的现代 C++ 日志引擎。系统深入探讨并攻克了高并发场景下 I/O 阻塞、锁竞争激烈、时序失真等核心难题，是现代 C++ 语言特性与经典系统设计模式深度融合的完整实践。

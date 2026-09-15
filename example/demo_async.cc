@@ -1,20 +1,21 @@
-#include "../include/bitlog.h"
+#include "../include/log.h"
 #include <vector>
 #include <thread>
 #include <chrono>
+#include <iostream>
 
 int main() {
     std::cout << "=== 演示 3: 高性能异步日志器（双缓冲模式 + 自动滚动切片） ===\n";
 
-    std::unique_ptr<bitlog::LoggerBuilder> builder(new bitlog::GlobalLoggerBuilder());
+    std::unique_ptr<logger::LoggerBuilder> builder(new logger::GlobalLoggerBuilder());
     builder->buildLoggerName("async_logger");
-    builder->buildLoggerLevel(bitlog::LogLevel::value::INFO); // 设置过滤级别为 INFO
-    builder->buildLoggerType(bitlog::Logger::Type::LOGGER_ASYNC);
+    builder->buildLoggerLevel(logger::LogLevel::value::INFO); // 设置过滤级别为 INFO
+    builder->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC);
     builder->buildFormatter("[%d{%Y-%m-%d %H:%M:%S}][%t][%p][%c] %m%n");
-    builder->buildSink<bitlog::StdoutSink>();
+    builder->buildSink<logger::StdoutSink>();
     // 单个文件最大 1MB，超出自动滚动按时间切分
-    builder->buildSink<bitlog::RollSink>("./logs/async_roll", 1024 * 1024);
-    bitlog::Logger::ptr async_logger = builder->build();
+    builder->buildSink<logger::RollSink>("./logs/async_roll", 1024 * 1024);
+    logger::Logger::ptr async_logger = builder->build();
 
     std::cout << "异步日志器创建成功，正在测试等级过滤机制（DEBUG 应被短路拦截）...\n";
     // 这条 DEBUG 日志将被完全拦截，且流式拼接短路
@@ -40,5 +41,6 @@ int main() {
     }
 
     std::cout << "\n所有工作线程执行完毕！等待后台异步刷盘线程优雅退出...\n";
+    logger::LoggerManager::getInstance().shutdown();
     return 0;
 }

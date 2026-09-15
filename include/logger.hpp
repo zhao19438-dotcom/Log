@@ -1,5 +1,5 @@
-#ifndef __BITLOG_LOGGER_HPP__
-#define __BITLOG_LOGGER_HPP__
+#ifndef __LOG_LOGGER_HPP__
+#define __LOG_LOGGER_HPP__
 
 #include "util.hpp"
 #include "level.hpp"
@@ -16,7 +16,7 @@
 #include <cstdarg>
 #include <memory>
 
-namespace bitlog {
+namespace logger {
 
 // 跨平台安全格式化字符串辅助函数
 inline int safe_vasprintf(char **strp, const char *fmt, va_list ap) {
@@ -59,7 +59,7 @@ public:
     LogLevel::value loggerLevel() const { return _level.load(); }
 
     // 检查日志级别是否满足输出门槛
-    BITLOG_NODISCARD bool shouldLog(LogLevel::value level) const {
+    LOG_NODISCARD bool shouldLog(LogLevel::value level) const {
         return level >= _level.load();
     }
 
@@ -113,7 +113,7 @@ public:
         va_end(al);
     }
 
-#if BITLOG_HAS_SOURCE_LOCATION
+#if LOG_HAS_SOURCE_LOCATION
     // C++20 前沿特性：无宏优雅原生调用（自动注入调用者源文件名与代码行号）
     void debug(const std::string &msg, const std::source_location loc = std::source_location::current()) {
         submit(LogLevel::value::DEBUG, loc.file_name(), loc.line(), std::string(msg));
@@ -138,7 +138,7 @@ protected:
         std::string msg;
         int len = safe_vasprintf(&buf, fmt, al);
         if (len < 0) {
-            msg = "[BitLog Error] 格式化日志消息失败！";
+            msg = "[Log Error] 格式化日志消息失败！";
         } else {
             msg.assign(buf, len);
             free(buf);
@@ -146,9 +146,11 @@ protected:
         submit(level, file, line, std::move(msg));
     }
 
-    // 具体的刷新落地交由派生类（同步或异步）实现
-    virtual void logIt(const std::string &msg) = 0;
+public:
+    virtual void flush() = 0;
 
+protected:
+    virtual void logIt(const std::string &msg) = 0;
 protected:
     std::mutex _mutex;
     std::string _name;
@@ -176,6 +178,14 @@ protected:
             sink->log(msg.data(), msg.size());
         }
     }
+
+public:
+    void flush() override {
+        std::unique_lock<std::mutex> lock(_mutex);
+        for (auto &sink : _sinks) {
+            sink->flush();
+        }
+    }
 };
 
 // 异步日志器
@@ -191,7 +201,7 @@ public:
           _looper(std::make_shared<AsyncLooper>([this](Buffer &buf) {
               realLog(buf);
           })) {}
-
+    ~AsyncLogger() { _looper->stop(); }
 protected:
     void logIt(const std::string &msg) override {
         _looper->push(msg.data(), msg.size());
@@ -202,6 +212,14 @@ protected:
         if (_sinks.empty()) return;
         for (auto &sink : _sinks) {
             sink->log(buf.begin(), buf.readAbleSize());
+        }
+    }
+
+public:
+    void flush() override {
+        _looper->stop();
+        for (auto &sink : _sinks) {
+            sink->flush();
         }
     }
 
@@ -251,7 +269,9 @@ protected:
 class LocalLoggerBuilder : public LoggerBuilder {
 public:
     Logger::ptr build() override {
-        assert(!_logger_name.empty());
+        if (_logger_name.empty()) {
+            throw std::invalid_argument("[Log Error] Logger name cannot be empty");
+        }
         if (!_formatter) {
             _formatter = std::make_shared<Formatter>();
         }
@@ -282,9 +302,12 @@ public:
     }
 
     void addLogger(const Logger::ptr &logger) {
-        if (hasLogger(logger->loggerName())) return;
+        if (!logger) return;
         std::unique_lock<std::mutex> lock(_mutex);
-        _loggers[logger->loggerName()] = logger;
+        const auto &name = logger->loggerName();
+        if (_loggers.find(name) == _loggers.end()) {
+            _loggers[name] = logger;
+        }
     }
 
     bool hasLogger(const std::string &name) {
@@ -303,6 +326,16 @@ public:
 
     Logger::ptr rootLogger() {
         return _root_logger;
+    }
+
+    void shutdown() {
+        if (_root_logger) {
+            _root_logger->flush();
+        }
+        std::unique_lock<std::mutex> lock(_mutex);
+        for (auto &pair : _loggers) {
+            pair.second->flush();
+        }
     }
 
 private:
@@ -342,6 +375,6 @@ inline Logger::ptr GlobalLoggerBuilder::build() {
     return logger;
 }
 
-} // namespace bitlog
+} // namespace logger
 
-#endif // __BITLOG_LOGGER_HPP__
+#endif // __LOG_LOGGER_HPP__

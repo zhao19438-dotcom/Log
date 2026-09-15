@@ -1,12 +1,12 @@
-#ifndef __BITLOG_BUFFER_HPP__
-#define __BITLOG_BUFFER_HPP__
+#ifndef __LOG_BUFFER_HPP__
+#define __LOG_BUFFER_HPP__
 
 #include <vector>
 #include <algorithm>
 #include <cassert>
 #include <cstring>
 
-namespace bitlog {
+namespace logger {
 
 // 默认缓冲区大小：1MB
 constexpr size_t DEFAULT_BUFFER_SIZE = 1 * 1024 * 1024;
@@ -89,6 +89,6 @@ private:
     std::vector<char> _v;
 };
 
-} // namespace bitlog
+} // namespace logger
 
-#endif // __BITLOG_BUFFER_HPP__
+#endif // __LOG_BUFFER_HPP__
