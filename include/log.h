@@ -78,6 +78,65 @@ inline void init_async(const std::string &logfile,
     LoggerManager::getInstance().setRootLogger(builder->build());
 }
 
+// 4. 多模块专用：一行创建并全局注册独立异步日志器
+inline Logger::ptr create_async(const std::string &name,
+                                const std::string &logfile = "",
+                                size_t roll_size = 10 * 1024 * 1024,
+                                LogLevel::value level = LogLevel::value::DEBUG,
+                                bool console = false,
+                                const std::string &pattern = "") {
+    std::unique_ptr<LoggerBuilder> builder(new GlobalLoggerBuilder());
+    builder->buildLoggerName(name);
+    builder->buildLoggerLevel(level);
+    builder->buildLoggerType(Logger::Type::LOGGER_ASYNC);
+    if (!pattern.empty()) {
+        builder->buildFormatter(pattern);
+    }
+    if (console) {
+        builder->buildSink<StdoutSink>();
+    }
+    if (!logfile.empty()) {
+        if (roll_size > 0) {
+            builder->buildSink<RollSink>(logfile, roll_size);
+        } else {
+            builder->buildSink<FileSink>(logfile);
+        }
+    }
+    return builder->build();
+}
+
+// 5. 多模块专用：一行创建并全局注册独立同步日志器
+inline Logger::ptr create_sync(const std::string &name,
+                               const std::string &logfile = "",
+                               LogLevel::value level = LogLevel::value::DEBUG,
+                               bool console = false,
+                               const std::string &pattern = "") {
+    std::unique_ptr<LoggerBuilder> builder(new GlobalLoggerBuilder());
+    builder->buildLoggerName(name);
+    builder->buildLoggerLevel(level);
+    builder->buildLoggerType(Logger::Type::LOGGER_SYNC);
+    if (!pattern.empty()) {
+        builder->buildFormatter(pattern);
+    }
+    if (console) {
+        builder->buildSink<StdoutSink>();
+    }
+    if (!logfile.empty()) {
+        builder->buildSink<FileSink>(logfile);
+    }
+    return builder->build();
+}
+
+// 快速获取指定日志器的极简别名
+inline Logger::ptr get(const std::string &name) {
+    return getLogger(name);
+}
+
+// 统一目标转换器（支持传 Logger::ptr、std::string 名字 或 const char* 字符串字面量）
+inline Logger::ptr to_logger(const Logger::ptr &l) { return l; }
+inline Logger::ptr to_logger(const std::string &name) { return getLogger(name); }
+inline Logger::ptr to_logger(const char *name) { return getLogger(name); }
+
 // 手动显式安全退出（可选，进程正常退出时已由 atexit 自动安全守护）
 inline void shutdown() {
     LoggerManager::getInstance().shutdown();
@@ -124,12 +183,12 @@ inline void fatal(const std::string &msg, const std::source_location loc = std::
 #define LOGE(fmt, ...) LOG_ERROR(fmt, ##__VA_ARGS__)
 #define LOGF(fmt, ...) LOG_FATAL(fmt, ##__VA_ARGS__)
 
-// 2. 指定特定日志器（多模块/自定义 Logger 场景）
-#define LOG_DEBUG_TO(l, fmt, ...) (l)->debug(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
-#define LOG_INFO_TO(l, fmt, ...)  (l)->info(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
-#define LOG_WARN_TO(l, fmt, ...)  (l)->warn(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
-#define LOG_ERROR_TO(l, fmt, ...) (l)->error(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
-#define LOG_FATAL_TO(l, fmt, ...) (l)->fatal(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+// 2. 指定特定日志器（支持传指针如 db_logger，也支持直接传名字如 "db"、"net"）
+#define LOG_DEBUG_TO(l, fmt, ...) (logger::to_logger(l))->debug(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_INFO_TO(l, fmt, ...)  (logger::to_logger(l))->info(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_WARN_TO(l, fmt, ...)  (logger::to_logger(l))->warn(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_ERROR_TO(l, fmt, ...) (logger::to_logger(l))->error(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_FATAL_TO(l, fmt, ...) (logger::to_logger(l))->fatal(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
 // ==========================================
 // 前端二：C++ 现代流式 << 宏定义族（支持等级短路）
@@ -149,12 +208,12 @@ inline void fatal(const std::string &msg, const std::source_location loc = std::
 #define LOG_ERROR_S LOG_STREAM_ERROR
 #define LOG_FATAL_S LOG_STREAM_FATAL
 
-// 2. 指定特定日志器的流式宏
-#define LOG_STREAM_DEBUG_TO(l) LOG_STREAM(l, logger::LogLevel::value::DEBUG)
-#define LOG_STREAM_INFO_TO(l)  LOG_STREAM(l, logger::LogLevel::value::INFO)
-#define LOG_STREAM_WARN_TO(l)  LOG_STREAM(l, logger::LogLevel::value::WARN)
-#define LOG_STREAM_ERROR_TO(l) LOG_STREAM(l, logger::LogLevel::value::ERROR)
-#define LOG_STREAM_FATAL_TO(l) LOG_STREAM(l, logger::LogLevel::value::FATAL)
+// 2. 指定特定日志器的流式宏（同样支持传指针或直接传模块名如 "db"）
+#define LOG_STREAM_DEBUG_TO(l) LOG_STREAM(logger::to_logger(l), logger::LogLevel::value::DEBUG)
+#define LOG_STREAM_INFO_TO(l)  LOG_STREAM(logger::to_logger(l), logger::LogLevel::value::INFO)
+#define LOG_STREAM_WARN_TO(l)  LOG_STREAM(logger::to_logger(l), logger::LogLevel::value::WARN)
+#define LOG_STREAM_ERROR_TO(l) LOG_STREAM(logger::to_logger(l), logger::LogLevel::value::ERROR)
+#define LOG_STREAM_FATAL_TO(l) LOG_STREAM(logger::to_logger(l), logger::LogLevel::value::FATAL)
 
 #define LOG_S_DEBUG(l) LOG_STREAM_DEBUG_TO(l)
 #define LOG_S_INFO(l)  LOG_STREAM_INFO_TO(l)

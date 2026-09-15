@@ -33,6 +33,16 @@ int main() {
     LOG_INFO("极简 API 初始化完成！当前输出目标: 终端控制台 + ./logs/app_quick.log");
     LOG_STREAM_INFO << "像使用 printf 一样直接调用，或者丝滑流式写入，进程退出无需手动 shutdown！";
 
-    std::cout << "\n同步演示完成！进程退出时将由 atexit 自动安全刷盘。\n";
+    std::cout << "\n=== 演示 4: 多模块独立日志（1 行创建，直接按模块名极简输出） ===\n";
+    // 一行创建模块专用日志器
+    logger::create_sync("db", "./logs/db.log");
+    logger::create_sync("net", "./logs/net.log");
+
+    // 任意业务函数中直接传入模块名，免去传递指针的烦恼！
+    LOG_INFO_TO("db", "SQL查询成功: SELECT * FROM users WHERE id = %d", 10086);
+    LOG_WARN_TO("net", "客户端网络波动，重传数据包: seq=%d", 4096);
+    LOG_STREAM_ERROR_TO("db") << "SQL执行失败: 唯一键冲突 (errno: " << 1062 << ")";
+
+    std::cout << "\n同步演示完成！所有日志已安全持久化至对应文件。\n";
     return 0;
 }

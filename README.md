@@ -89,29 +89,43 @@ int main() {
 }
 ```
 
-### 3. 高级用法：使用 Builder 定制多落地策略日志器
+### 3. 多模块独立日志（1 行创建，直接按名字输出 ⭐）
+在稍大型工程中，不同业务模块（如网络模块 `net`、数据库模块 `db`）需要分开落盘到不同文件。现在**完全不用写 Builder，也不需要满天飞传指针**：
+
 ```cpp
 #include "log.h"
 
 int main() {
-    // 1. 创建全局异步日志器建造者
-    std::unique_ptr<logger::LoggerBuilder> builder(new logger::GlobalLoggerBuilder());
-    builder->buildLoggerName("custom_logger");
-    builder->buildLoggerLevel(logger::LogLevel::value::DEBUG);
-    builder->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC);
-    builder->buildFormatter("[%d{%Y-%m-%d %H:%M:%S}][%p][%c][%f:%l] %m%n");
+    // 1. 一行创建并注册模块独立日志器
+    logger::create_async("db", "./logs/db.log");       // 异步写数据库日志
+    logger::create_async("net", "./logs/net.log");     // 异步写网络日志
 
-    // 2. 同时挂载控制台与滚动日志文件（单文件最大 10MB）
+    // 2. 在工程的任何文件、任何函数中，直接传名字打印！
+    LOG_INFO_TO("db", "SQL查询成功: SELECT * FROM users WHERE id = %d", 10086);
+    LOG_WARN_TO("net", "客户端网络丢包重传: seq=%d", 2048);
+    LOG_STREAM_ERROR_TO("db") << "SQL执行失败: errno=" << 1062;
+
+    return 0;
+}
+```
+
+### 4. 高级定制：使用 Builder 深度组装
+如果需要深度定制 Pattern、挂载 3 个以上的特殊 Sink（如后续扩展远程网络 Syslog 等），底层的 Builder 随时待命：
+```cpp
+#include "log.h"
+
+int main() {
+    std::unique_ptr<logger::LoggerBuilder> builder(new logger::GlobalLoggerBuilder());
+    builder->buildLoggerName("custom")
+           ->buildLoggerLevel(logger::LogLevel::value::DEBUG)
+           ->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC)
+           ->buildFormatter("[%d{%Y-%m-%d %H:%M:%S}][%p][%c][%f:%l] %m%n");
+
     builder->buildSink<logger::StdoutSink>();
     builder->buildSink<logger::RollSink>("./logs/custom_roll", 10 * 1024 * 1024);
+    auto logger = builder->build();
 
-    // 3. 构建并自动注册进单例管理器
-    logger::Logger::ptr logger = builder->build();
-
-    // 4. 使用指定日志器输出
-    LOG_INFO_TO(logger, "自定义日志器开始监听新连接...");
-    LOG_STREAM_WARN_TO(logger) << "客户端 [192.168.1.50] 重试次数达上限: " << 5;
-
+    LOG_INFO_TO(logger, "自定义日志器深度就绪...");
     return 0;
 }
 ```
