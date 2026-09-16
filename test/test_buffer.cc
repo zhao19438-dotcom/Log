@@ -26,7 +26,7 @@ TEST_CASE(BufferTest, PushAndRead) {
 
 TEST_CASE(BufferTest, GeometricExpansion) {
     logger::Buffer buf;
-    // 写入超过 1MB 默认容量的数据（1.5MB），触发 1.5 倍平滑扩容
+    // 写入超过默认容量的数据测试扩容
     size_t big_size = 1500 * 1024;
     std::string big_payload(big_size, 'A');
     big_payload[0] = 'S';
@@ -41,14 +41,14 @@ TEST_CASE(BufferTest, GeometricExpansion) {
 
 TEST_CASE(BufferTest, AdaptiveShrinkAfterSpike) {
     logger::Buffer buf;
-    // 写入大于缩容判定阈值（8MB，此处写入 9MB）
+    // 写入大于阈值的数据（9MB）
     size_t spike_size = 9 * 1024 * 1024;
     std::string spike_payload(spike_size, 'X');
     buf.push(spike_payload.data(), spike_payload.size());
 
     ASSERT_TRUE(buf.readAbleSize() == spike_size);
 
-    // 重置缓冲区，自适应收缩逻辑应将多余堆内存归还操作系统，防内存膨胀
+    // 重置缓冲区，测试容量恢复为默认大小
     buf.reset();
     ASSERT_TRUE(buf.empty());
     ASSERT_EQ(buf.writeAbleSize(), logger::DEFAULT_BUFFER_SIZE);

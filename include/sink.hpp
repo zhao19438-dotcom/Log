@@ -12,6 +12,7 @@
 
 namespace logger {
 
+// 日志落地基类
 class LogSink {
 public:
     using ptr = std::shared_ptr<LogSink>;
@@ -20,11 +21,10 @@ public:
     virtual void flush() {}
 };
 
-// 1. 标准输出策略（终端打印，行原子性线程安全）
+// 控制台标准输出落地
 class StdoutSink : public LogSink {
 public:
     void log(const char *data, size_t len) override {
-        // 全局控制台互斥锁，杜绝多日志器/跨线程并发写入时的字符交错与撕裂
         std::unique_lock<std::mutex> lock(_stdout_mutex);
         std::cout.write(data, len);
     }
@@ -36,11 +36,11 @@ private:
     inline static std::mutex _stdout_mutex;
 };
 
-// 2. 固定文件落地策略（常驻文件流句柄，高性能追加，线程安全）
+// 单文件追加写入落地
 class FileSink : public LogSink {
 public:
+    // @param pathname 目标日志文件路径
     FileSink(const std::string &pathname) : _pathname(pathname) {
-        // 创建文件所在目录
         util::file::create_directory(util::file::path(pathname));
         _ofs.open(pathname, std::ios::binary | std::ios::app);
         if (!_ofs.is_open()) {
@@ -78,9 +78,11 @@ private:
     std::ofstream _ofs;
 };
 
-// 3. 滚动文件落地策略（按文件大小自动切片轮转，线程安全）
+// 按照文件大小滚动的落地策略
 class RollSink : public LogSink {
 public:
+    // @param basename 基础路径前缀
+    // @param max_fsize 单个文件最大字节数
     RollSink(const std::string &basename, size_t max_fsize)
         : _basename(basename), _max_fsize(max_fsize), _cur_fsize(0), _count(0) {
         util::file::create_directory(util::file::path(basename));
@@ -90,7 +92,6 @@ public:
             std::cerr << "[Log Fatal] 打开滚动文件失败: " << pathname << std::endl;
             std::abort();
         }
-        // 精准校准当前物理文件初始大小，彻底避免服务重启追加写入时大小感知失真
         _ofs.seekp(0, std::ios::end);
         _cur_fsize = static_cast<size_t>(_ofs.tellp());
     }
@@ -131,6 +132,7 @@ public:
     }
 
 private:
+    // 生成新的滚动日志文件名
     std::string createNewFile() {
         time_t t = time(nullptr);
         struct tm tm_time;
@@ -156,7 +158,7 @@ private:
     std::ofstream _ofs;
 };
 
-// 落地策略模板工厂类（利用可变参数模板与完美转发）
+// 落地端工厂类
 class SinkFactory {
 public:
     template <typename SinkType, typename ...Args>

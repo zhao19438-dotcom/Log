@@ -19,7 +19,7 @@
 
 namespace logger {
 
-// 跨平台安全格式化字符串辅助函数（RAII 原生，0 裸内存分配，天然异常安全）
+// 格式化变参字符串
 inline std::string format_vstring(const char *fmt, va_list ap) {
     va_list ap_copy;
     va_copy(ap_copy, ap);
@@ -44,7 +44,7 @@ inline std::string format_vstring(const char *fmt, va_list ap) {
 class SyncLogger;
 class AsyncLogger;
 
-// 日志器抽象基类
+// 日志器基类
 class Logger {
 public:
     enum class Type {
@@ -62,16 +62,23 @@ public:
 
     virtual ~Logger() = default;
 
+    // 获取日志器名称
     const std::string &loggerName() const { return _name; }
+    // 获取当前日志输出门槛级别
     LogLevel::value loggerLevel() const { return _level.load(); }
+    // 动态调整日志输出门槛级别
     void setLevel(LogLevel::value level) { _level.store(level); }
 
-    // 检查日志级别是否满足输出门槛
+    // 判断指定级别是否达到当前日志器的输出门槛
     LOG_NODISCARD bool shouldLog(LogLevel::value level) const {
         return level >= _level.load();
     }
 
-    // 统一核心提交层：无论上层来自 printf 还是 C++ 流式，最终都经由这里汇合
+    // 格式化并提交日志消息
+    // @param level 日志等级
+    // @param file 源文件名
+    // @param line 代码行号
+    // @param msg 日志正文内容
     void submit(LogLevel::value level, const char *file, size_t line, std::string &&msg) {
         if (!shouldLog(level)) return;
         LogMsg lm(_name, file, line, std::move(msg), level);
@@ -88,7 +95,7 @@ public:
     log(level_val, file, line, fmt, al); \
     va_end(al)
 
-    // 变参接口（C 风格）
+    // C 风格变参日志输出接口
     void debug(const char *file, size_t line, const char *fmt, ...) {
         LOG_VARIADIC_IMPL(LogLevel::value::DEBUG);
     }
@@ -112,13 +119,13 @@ public:
             log(LogLevel::value::FATAL, file, line, fmt, al);
             va_end(al);
         }
-        std::abort(); // fatal级别意味着严重错误，必须中止程序
+        std::abort();
     }
 
 #undef LOG_VARIADIC_IMPL
 
 #if LOG_HAS_SOURCE_LOCATION
-    // C++20 前沿特性：无宏优雅原生调用（自动注入调用者源文件名与代码行号）
+    // source_location 调用接口（自动获取文件名与行号）
     void debug(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
         submit(LogLevel::value::DEBUG, loc.file_name(), loc.line(), std::string(msg));
     }
@@ -147,6 +154,7 @@ public:
 
 protected:
     virtual void logIt(const std::string &msg) = 0;
+
 protected:
     std::mutex _mutex;
     std::string _name;
@@ -198,12 +206,13 @@ public:
               realLog(buf);
           })) {}
     ~AsyncLogger() { _looper->stop(); }
+
 protected:
     void logIt(const std::string &msg) override {
         _looper->push(msg.data(), msg.size());
     }
 
-    // 后台专属工作线程批量落盘真实逻辑
+    // 将缓冲区日志写入各落地端
     void realLog(Buffer &buf) {
         if (_sinks.empty()) return;
         for (auto &sink : _sinks) {
@@ -223,7 +232,7 @@ private:
     AsyncLooper::ptr _looper;
 };
 
-// 建造者基类（Builder 模式）
+// 日志器建造者基类
 class LoggerBuilder {
 public:
     using ptr = std::shared_ptr<LoggerBuilder>;
@@ -234,10 +243,14 @@ public:
 
     virtual ~LoggerBuilder() = default;
 
+    // 设置日志器名称
     void buildLoggerName(const std::string &name) { _logger_name = name; }
+    // 设置过滤级别
     void buildLoggerLevel(LogLevel::value level) { _level = level; }
+    // 设置日志器类型（同步/异步）
     void buildLoggerType(Logger::Type type) { _logger_type = type; }
 
+    // 设置格式化模式
     void buildFormatter(const std::string &pattern) {
         _formatter = std::make_shared<Formatter>(pattern);
     }
@@ -245,12 +258,14 @@ public:
         _formatter = formatter;
     }
 
+    // 添加落地端
     template <typename SinkType, typename ...Args>
     void buildSink(Args &&...args) {
         auto sink = SinkFactory::create<SinkType>(std::forward<Args>(args)...);
         _sinks.push_back(sink);
     }
 
+    // 构建日志器实例
     virtual Logger::ptr build() {
         if (_logger_name.empty()) {
             throw std::invalid_argument("[Log Error] Logger name cannot be empty");
@@ -275,20 +290,19 @@ protected:
     std::vector<LogSink::ptr> _sinks;
 };
 
-// 本地局部日志器建造者（不注册进单例管理器）
+// 本地日志器建造者（构建后不自动注册到全局管理器）
 class LocalLoggerBuilder : public LoggerBuilder {
-    // 继承基类的 build 逻辑，直接返回生成的 Logger，不注册
 };
 
 class LoggerManager;
 
-// 全局日志器建造者（自动注册进单例管理器）
+// 全局日志器建造者（构建后自动注册到全局单例管理器）
 class GlobalLoggerBuilder : public LoggerBuilder {
 public:
     Logger::ptr build() override;
 };
 
-// 日志器单例管理器（Meyers 单例模式）
+// 全局日志器单例管理器
 class LoggerManager {
 public:
     static LoggerManager &getInstance() {
@@ -296,6 +310,7 @@ public:
         return instance;
     }
 
+    // 添加日志器
     void addLogger(const Logger::ptr &logger) {
         if (!logger) return;
         std::unique_lock<std::mutex> lock(_mutex);
@@ -306,11 +321,13 @@ public:
         _loggers[name] = logger;
     }
 
+    // 检查是否存在指定名称的日志器
     bool hasLogger(const std::string &name) {
         std::unique_lock<std::mutex> lock(_mutex);
         return _loggers.find(name) != _loggers.end();
     }
 
+    // 获取指定名称的日志器
     Logger::ptr getLogger(const std::string &name) {
         std::unique_lock<std::mutex> lock(_mutex);
         auto it = _loggers.find(name);
@@ -320,11 +337,13 @@ public:
         return it->second;
     }
 
+    // 获取默认根日志器
     Logger::ptr rootLogger() {
         std::unique_lock<std::mutex> lock(_mutex);
         return _root_logger;
     }
 
+    // 设置默认根日志器
     void setRootLogger(const Logger::ptr &logger) {
         if (!logger) return;
         std::unique_lock<std::mutex> lock(_mutex);
@@ -332,8 +351,8 @@ public:
         _loggers["root"] = logger;
     }
 
+    // 刷新并排空所有日志器缓冲区
     void shutdown() {
-        // 先在锁内快照所有日志器指针，彻底杜绝遍历过程持锁导致的潜在锁级联与死锁风险
         std::vector<Logger::ptr> loggers_to_flush;
         {
             std::unique_lock<std::mutex> lock(_mutex);
@@ -350,7 +369,6 @@ public:
 
 private:
     LoggerManager() {
-        // 默认初始化一个根日志器（名为 root，输出到控制台）
         auto builder = std::make_unique<LocalLoggerBuilder>();
         builder->buildLoggerName("root");
         _root_logger = builder->build();
@@ -358,7 +376,6 @@ private:
     }
 
     ~LoggerManager() {
-        // RAII 核心保证：当单例销毁时（进程退出），成员变量尚完全有效，自动安全刷盘排空
         shutdown();
     }
 
@@ -371,7 +388,6 @@ private:
     std::unordered_map<std::string, Logger::ptr> _loggers;
 };
 
-// 实现 GlobalLoggerBuilder::build
 inline Logger::ptr GlobalLoggerBuilder::build() {
     Logger::ptr logger = LoggerBuilder::build();
     LoggerManager::getInstance().addLogger(logger);

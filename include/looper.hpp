@@ -12,12 +12,14 @@
 
 namespace logger {
 
-// 异步工作线程控制器（双缓冲调度核心）
+// 异步日志工作线程与缓冲调度器
 class AsyncLooper {
 public:
     using ptr = std::shared_ptr<AsyncLooper>;
     using Functor = std::function<void(Buffer &buffer)>;
 
+    // 构造函数，启动后台消费工作线程
+    // @param cb 消费缓冲区数据的回调函数
     AsyncLooper(const Functor &cb)
         : _running(true), _is_processing(false), _callback(cb),
           _thread(&AsyncLooper::worker_loop, this) {}
@@ -26,7 +28,7 @@ public:
         stop();
     }
 
-    // 优雅停止后台线程并确保所有剩余日志落盘（严格支持并发调用防崩溃）
+    // 停止工作线程并刷盘剩余日志
     void stop() {
         if (!_running.exchange(false)) return;
         {
@@ -39,8 +41,7 @@ public:
         }
     }
 
-    // 非破坏性同步刷新：阻塞等待当前缓冲区所有积压数据被后台线程消费排空（工作线程保持活跃）
-    // 采用 _is_processing 状态同步，彻底消除对消费缓冲区 _tasks_pop 的跨线程数据竞争
+    // 阻塞等待当前缓冲区数据全部被消费落盘
     void flush() {
         if (!_running) return;
         std::unique_lock<std::mutex> lock(_mutex);
@@ -51,14 +52,15 @@ public:
         });
     }
 
-    // 业务线程调用：将日志压入生产缓冲区（微秒级）
+    // 将日志数据写入生产缓冲区
+    // @param data 日志字节数据
+    // @param len 数据长度
     void push(const char *data, size_t len) {
         if (!_running) return;
         {
             std::unique_lock<std::mutex> lock(_mutex);
             bool need_notify = _tasks_push.empty();
             _tasks_push.push(data, len);
-            // 性能优化：仅在由空变非空的边界唤醒消费线程，大幅削减高频写入时的系统调用
             if (need_notify) {
                 _pop_cond.notify_one();
             }
@@ -66,34 +68,27 @@ public:
     }
 
 private:
-    // 后台专属落盘工作线程循环
+    // 工作线程主循环
     void worker_loop() {
         while (true) {
             {
                 std::unique_lock<std::mutex> lock(_mutex);
-                // 当处于运行状态且生产缓冲区为空时阻塞等待
                 _pop_cond.wait(lock, [this]() {
                     return !_tasks_push.empty() || !_running;
                 });
 
-                // 如果已停止且生产缓冲区为空，则退出循环
                 if (!_running && _tasks_push.empty()) {
                     _flush_cond.notify_all();
                     break;
                 }
 
-                // 核心关键：瞬间交换两个缓冲区（零拷贝，O(1)）
                 _tasks_push.swap(_tasks_pop);
-                _is_processing = true; // 标记消费线程正在执行下刷
+                _is_processing = true;
             }
-            // 锁已释放！业务线程可以继续无缝写入 _tasks_push，互不干扰
 
-            // 后台线程独占 _tasks_pop，批量刷入各落地 Sink
             _callback(_tasks_pop);
-            // 重置消费缓冲区，等待下一次交换
             _tasks_pop.reset();
 
-            // 本轮数据已全部落盘完成，持锁重置处理标记并广播唤醒等待 flush() 的业务线程
             {
                 std::unique_lock<std::mutex> lock(_mutex);
                 _is_processing = false;
@@ -104,14 +99,14 @@ private:
 
 private:
     std::atomic<bool> _running;
-    bool _is_processing; // 由 _mutex 保护：标记后台线程当前是否正独占处理上一批次数据
+    bool _is_processing;
     Functor _callback;
     std::mutex _mutex;
     std::condition_variable _pop_cond;
     std::condition_variable _flush_cond;
 
-    Buffer _tasks_push; // 生产缓冲区（多个业务线程并发写入）
-    Buffer _tasks_pop;  // 消费缓冲区（后台落盘线程独占读取）
+    Buffer _tasks_push; // 生产缓冲区
+    Buffer _tasks_pop;  // 消费缓冲区
     std::thread _thread;
 };
 

@@ -6,10 +6,9 @@
 
 namespace logger {
 
-// 日志等级枚举与辅助工具
+// 日志级别定义
 class LogLevel {
 public:
-    // 严格按严重程度递增排序，便于通过数值大小进行过滤 (level >= _limit)
     enum class value {
         UNKNOW = 0,
         DEBUG = 1,
@@ -20,7 +19,7 @@ public:
         OFF
     };
 
-    // 将枚举值转换为对应大写字符串
+    // 将级别枚举转换为大写字符串
     static const char *toString(LogLevel::value level) {
         switch (level) {
             case LogLevel::value::DEBUG: return "DEBUG";

@@ -1,4 +1,4 @@
-﻿#include "test_framework.hpp"
+#include "test_framework.hpp"
 #include "../include/looper.hpp"
 #include <vector>
 #include <string>
@@ -45,7 +45,7 @@ TEST_CASE(LooperTest, NonDestructiveFlushKeepsThreadAlive) {
         ASSERT_EQ(collected, stage1);
     }
 
-    // 阶段 2: 核心验证！flush 后工作线程必须保持存活，能继续正常接收后续数据
+    // 阶段 2: 验证 flush 后工作线程继续正常接收后续数据
     std::string stage2 = "STAGE_2_DATA;";
     looper.push(stage2.data(), stage2.size());
     looper.flush();

@@ -2,7 +2,7 @@
 #include <memory>
 
 int main() {
-    // 使用建造者模式（Builder）进行深度定制：自定义格式串与多落地目标
+    // 使用 Builder 自定义格式模式串与多个输出端
     auto builder = std::make_unique<logger::GlobalLoggerBuilder>();
     builder->buildLoggerName("custom");
     builder->buildLoggerLevel(logger::LogLevel::value::DEBUG);
@@ -12,9 +12,9 @@ int main() {
     builder->buildSink<logger::RollSink>("./logs/custom_roll.log", 5 * 1024 * 1024);
     builder->build();
 
-    // 全局任意位置直接按名使用
-    LOG_INFO_TO("custom", "自定义格式与滚动落地就绪");
-    LOG_STREAM_DEBUG_TO("custom") << "当前已启用 DEBUG 级别详细追踪";
+    // 按名称使用自定义日志器
+    LOG_INFO_TO("custom", "自定义日志器就绪");
+    LOG_STREAM_DEBUG_TO("custom") << "当前日志级别为 DEBUG";
 
     return 0;
 }

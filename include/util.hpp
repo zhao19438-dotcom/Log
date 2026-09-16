@@ -19,25 +19,25 @@
 namespace logger {
 namespace util {
 
-// 日期与时间工具类
+// 时间工具
 class date {
 public:
-    // 获取当前时间戳（秒级）
+    // 获取当前秒级时间戳
     static size_t now() {
         return static_cast<size_t>(time(nullptr));
     }
 };
 
-// 文件与目录工具类
+// 文件与路径工具
 class file {
 public:
-    // 判断文件或目录是否存在
+    // 判断路径是否存在
     static bool exists(const std::string &pathname) {
         struct stat st;
         return (stat(pathname.c_str(), &st) == 0);
     }
 
-    // 从完整路径中提取文件所在目录路径（包含结尾分隔符）
+    // 从完整路径中提取目录部分（包含尾部分隔符）
     static std::string path(const std::string &pathname) {
         if (pathname.empty()) return ".";
         size_t pos = pathname.find_last_of("/\\");
@@ -45,7 +45,7 @@ public:
         return pathname.substr(0, pos + 1);
     }
 
-    // 递归逐级创建目录
+    // 递归创建目录
     static void create_directory(const std::string &pathname) {
         if (pathname.empty() || exists(pathname)) return;
 
