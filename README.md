@@ -1,6 +1,6 @@
 # Log: 现代化高性能 C++ 双前端异步日志系统
 
-[![C++17](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B17)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-blue.svg)](https://en.wikipedia.org/wiki/C%2B%2B20)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Header Only](https://img.shields.io/badge/library-Header--Only-orange.svg)](#)
 
@@ -134,21 +134,28 @@ int main() {
 
 ## 🛠 编译与测试
 
-编译需要支持 C++17 的编译器（如 GCC 7+、Clang 5+ 或 MSVC 2019+）。
+编译需要支持 C++20 的编译器（如 GCC 11+、Clang 13+ 或 MSVC 2019+）。
 
-在 Linux 环境下，直接在工程根目录运行：
+在 Linux / MinGW 环境下，直接在工程根目录运行：
 ```bash
-# 编译所有示例与压测程序
+# 1. 编译所有示例、测试与压测程序
 make
 
-# 运行同步与异步功能演示
+# 2. 运行一分钟极简上手演示
+./example/quickstart
+
+# 3. 运行独立同步直写与异步引擎演示
 ./example/demo_sync
 ./example/demo_async
+./example/custom_builder
 
-# 运行性能压测基准测试
+# 4. 运行全模块自动化单元与集成测试套件（28 项全绿）
+make test
+
+# 5. 运行百万级日志基准性能压测
 ./bench/bench
 
-# 清理编译生成的目标与日志
+# 6. 清理编译生成的目标与日志
 make clean
 ```
 

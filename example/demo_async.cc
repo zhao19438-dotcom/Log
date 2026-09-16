@@ -1,55 +1,31 @@
 #include "../include/log.h"
-#include <vector>
 #include <thread>
-#include <chrono>
-#include <iostream>
+#include <vector>
 
 int main() {
-    std::cout << "=== 演示 3: 高性能异步日志器（双缓冲模式 + 自动滚动切片） ===\n";
+    // 1. 极简 1 行开启高性能异步引擎（双缓冲无锁置换 + 自动切片滚动）
+    logger::init_async("./logs/async.log");
+    LOG_INFO("高性能异步日志系统已就绪，准备多线程并发写入...");
 
-    std::unique_ptr<logger::LoggerBuilder> builder(new logger::GlobalLoggerBuilder());
-    builder->buildLoggerName("async_logger");
-    builder->buildLoggerLevel(logger::LogLevel::value::INFO); // 设置过滤级别为 INFO
-    builder->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC);
-    builder->buildFormatter("[%d{%Y-%m-%d %H:%M:%S}][%t][%p][%c] %m%n");
-    builder->buildSink<logger::StdoutSink>();
-    // 单个文件最大 1MB，超出自动滚动按时间切分
-    builder->buildSink<logger::RollSink>("./logs/async_roll", 1024 * 1024);
-    logger::Logger::ptr async_logger = builder->build();
+    // 2. 注册网络模块专用异步日志器
+    logger::create_async("net", "./logs/async_net.log");
 
-    std::cout << "异步日志器创建成功，正在测试等级过滤机制（DEBUG 应被短路拦截）...\n";
-    // 这条 DEBUG 日志将被完全拦截，且流式拼接短路
-    LOG_S_DEBUG(async_logger) << "这条 DEBUG 日志不应该出现！耗时计算: " << 100 / 1;
-
-    std::cout << "启动 3 个工作线程并发写入异步日志...\n";
+    // 3. 多工作线程并发写入验证（业务线程零 I/O 阻塞）
     std::vector<std::thread> workers;
-    for (int i = 0; i < 3; ++i) {
-        workers.emplace_back([i, async_logger]() {
-            for (int j = 0; j < 5; ++j) {
-                // 变参写入
-                LOG_INFO_TO(async_logger, "Worker 线程 [%d] 执行任务阶段 A, 轮次: %d", i, j);
-                // 流式写入
-                LOG_STREAM_WARN_TO(async_logger) << "Worker 线程 [" << i << "] 执行任务阶段 B - 耗时: " 
-                                                 << (j * 1.5) << "ms";
-                std::this_thread::sleep_for(std::chrono::milliseconds(5));
-            }
+    for (int i = 1; i <= 3; ++i) {
+        workers.emplace_back([i]() {
+            // C 风格变参写入主日志
+            LOG_INFO("Worker 线程 [%d] 启动并处理业务任务...", i);
+            // 流式接口写入模块网络日志
+            LOG_STREAM_INFO_TO("net") << "Worker [" << i << "] 上报心跳数据包, 延迟: " << (i * 2.3) << "ms";
         });
     }
 
-    for (auto &w : workers) {
-        w.join();
+    for (auto &t : workers) {
+        t.join();
     }
 
-    std::cout << "\n测试中途调用 flush() 验证工作线程存活性（非破坏性刷新）：\n";
-    async_logger->flush();
-    LOG_INFO_TO(async_logger, "flush() 后继续成功写入日志！证明工作线程未被杀死，处于健康存活状态。");
-    async_logger->flush();
-
-    std::cout << "\n=== 演示 4: 现代化 1 行初始化异步日志并全局使用 ===\n";
-    logger::init_async("./logs/app_async_quick.log");
-    LOG_INFO("极简异步初始化成功！线程安全的非阻塞双缓冲异步引擎已启动。");
-    LOG_STREAM_INFO << "无需手动调用 shutdown，进程正常退出时后台工作线程将由 atexit 自动优雅落盘并同步！";
-
-    std::cout << "\n所有工作线程执行完毕！进程退出...\n";
+    LOG_INFO("所有工作线程任务完成！");
+    // 进程退出时 RAII 自动排空异步队列并优雅落盘，无需手动 shutdown
     return 0;
 }
