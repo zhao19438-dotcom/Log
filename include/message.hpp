@@ -1,5 +1,6 @@
-#ifndef __LOG_MESSAGE_HPP__
-#define __LOG_MESSAGE_HPP__
+#pragma once
+#ifndef LOGGER_MESSAGE_HPP_
+#define LOGGER_MESSAGE_HPP_
 
 #include "level.hpp"
 #include "util.hpp"
@@ -35,4 +36,4 @@ struct LogMsg {
 
 } // namespace logger
 
-#endif // __LOG_MESSAGE_HPP__
+#endif // LOGGER_MESSAGE_HPP_

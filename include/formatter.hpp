@@ -1,5 +1,6 @@
-#ifndef __LOG_FORMATTER_HPP__
-#define __LOG_FORMATTER_HPP__
+#pragma once
+#ifndef LOGGER_FORMATTER_HPP_
+#define LOGGER_FORMATTER_HPP_
 
 #include "message.hpp"
 #include <iostream>
@@ -253,4 +254,4 @@ private:
 
 } // namespace logger
 
-#endif // __LOG_FORMATTER_HPP__
+#endif // LOGGER_FORMATTER_HPP_

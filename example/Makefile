@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -Wall -g -pthread -I../include
+CXXFLAGS = -std=c++20 -Wall -g -pthread -I../include
 
 TARGETS = demo_sync demo_async
 

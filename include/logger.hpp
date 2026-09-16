@@ -1,5 +1,6 @@
-#ifndef __LOG_LOGGER_HPP__
-#define __LOG_LOGGER_HPP__
+#pragma once
+#ifndef LOGGER_LOGGER_HPP_
+#define LOGGER_LOGGER_HPP_
 
 #include "util.hpp"
 #include "level.hpp"
@@ -375,4 +376,4 @@ inline Logger::ptr GlobalLoggerBuilder::build() {
 
 } // namespace logger
 
-#endif // __LOG_LOGGER_HPP__
+#endif // LOGGER_LOGGER_HPP_

@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++17 -O3 -Wall -g -pthread -I../include
+CXXFLAGS = -std=c++20 -O3 -Wall -g -pthread -I../include
 
 TARGET = bench
 

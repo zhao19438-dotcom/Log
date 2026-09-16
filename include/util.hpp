@@ -1,5 +1,6 @@
-#ifndef __LOG_UTIL_HPP__
-#define __LOG_UTIL_HPP__
+#pragma once
+#ifndef LOGGER_UTIL_HPP_
+#define LOGGER_UTIL_HPP_
 
 #include <iostream>
 #include <string>
@@ -67,4 +68,4 @@ public:
 } // namespace util
 } // namespace logger
 
-#endif // __LOG_UTIL_HPP__
+#endif // LOGGER_UTIL_HPP_

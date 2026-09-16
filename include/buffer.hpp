@@ -1,5 +1,6 @@
-#ifndef __LOG_BUFFER_HPP__
-#define __LOG_BUFFER_HPP__
+#pragma once
+#ifndef LOGGER_BUFFER_HPP_
+#define LOGGER_BUFFER_HPP_
 
 #include <vector>
 #include <algorithm>
@@ -135,4 +136,4 @@ private:
 
 } // namespace logger
 
-#endif // __LOG_BUFFER_HPP__
+#endif // LOGGER_BUFFER_HPP_

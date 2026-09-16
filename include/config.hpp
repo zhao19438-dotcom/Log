@@ -1,5 +1,6 @@
-#ifndef __LOG_CONFIG_HPP__
-#define __LOG_CONFIG_HPP__
+#pragma once
+#ifndef LOGGER_CONFIG_HPP_
+#define LOGGER_CONFIG_HPP_
 
 // ============================================================================
 // C++ 标准版本探测分水岭 (C++ Standard Feature Detection Watershed)
@@ -81,4 +82,4 @@ namespace logger {
     #define LOG_HAS_SOURCE_LOCATION 0
 #endif
 
-#endif // __LOG_CONFIG_HPP__
+#endif // LOGGER_CONFIG_HPP_

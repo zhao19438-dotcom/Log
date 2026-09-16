@@ -1,5 +1,6 @@
-#ifndef __LOG_LOOPER_HPP__
-#define __LOG_LOOPER_HPP__
+#pragma once
+#ifndef LOGGER_LOOPER_HPP_
+#define LOGGER_LOOPER_HPP_
 
 #include "buffer.hpp"
 #include <thread>
@@ -113,4 +114,4 @@ private:
 
 } // namespace logger
 
-#endif // __LOG_LOOPER_HPP__
+#endif // LOGGER_LOOPER_HPP_

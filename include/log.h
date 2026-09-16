@@ -1,5 +1,6 @@
-#ifndef __LOG_H__
-#define __LOG_H__
+#pragma once
+#ifndef LOGGER_LOG_H_
+#define LOGGER_LOG_H_
 
 #include "config.hpp"
 #include "logger.hpp"
@@ -17,78 +18,19 @@ inline Logger::ptr rootLogger() {
     return LoggerManager::getInstance().rootLogger();
 }
 
-// ==========================================
-// 快捷初始化函数族（极简门面，1 行搞定初始化）
-// ==========================================
-
-// 1. 纯控制台日志（开箱即用，零配置）
-inline void init_console(LogLevel::value level = LogLevel::value::DEBUG,
-                         const std::string &pattern = "") {
-    std::unique_ptr<LoggerBuilder> builder(new LocalLoggerBuilder());
-    builder->buildLoggerName("root");
-    builder->buildLoggerLevel(level);
-    builder->buildLoggerType(Logger::Type::LOGGER_SYNC);
-    if (!pattern.empty()) {
-        builder->buildFormatter(pattern);
-    }
-    builder->buildSink<StdoutSink>();
-    LoggerManager::getInstance().setRootLogger(builder->build());
-}
-
-// 2. 同步文件日志（可选择是否同步输出到控制台）
-inline void init_sync(const std::string &logfile,
-                      LogLevel::value level = LogLevel::value::DEBUG,
-                      bool console = true,
-                      const std::string &pattern = "") {
-    std::unique_ptr<LoggerBuilder> builder(new LocalLoggerBuilder());
-    builder->buildLoggerName("root");
-    builder->buildLoggerLevel(level);
-    builder->buildLoggerType(Logger::Type::LOGGER_SYNC);
-    if (!pattern.empty()) {
-        builder->buildFormatter(pattern);
-    }
-    if (console) {
-        builder->buildSink<StdoutSink>();
-    }
-    builder->buildSink<FileSink>(logfile);
-    LoggerManager::getInstance().setRootLogger(builder->build());
-}
-
-// 3. 高性能异步日志（支持文件大小切片轮转，默认 10MB 滚动，可同时输出到控制台）
-inline void init_async(const std::string &logfile,
-                       size_t roll_size = 10 * 1024 * 1024,
-                       LogLevel::value level = LogLevel::value::DEBUG,
-                       bool console = true,
-                       const std::string &pattern = "") {
-    std::unique_ptr<LoggerBuilder> builder(new LocalLoggerBuilder());
-    builder->buildLoggerName("root");
-    builder->buildLoggerLevel(level);
-    builder->buildLoggerType(Logger::Type::LOGGER_ASYNC);
-    if (!pattern.empty()) {
-        builder->buildFormatter(pattern);
-    }
-    if (console) {
-        builder->buildSink<StdoutSink>();
-    }
-    if (roll_size > 0) {
-        builder->buildSink<RollSink>(logfile, roll_size);
-    } else {
-        builder->buildSink<FileSink>(logfile);
-    }
-    LoggerManager::getInstance().setRootLogger(builder->build());
-}
-
-// 4. 多模块专用：一行创建并全局注册独立异步日志器
-inline Logger::ptr create_async(const std::string &name,
-                                const std::string &logfile = "",
-                                size_t roll_size = 10 * 1024 * 1024,
-                                LogLevel::value level = LogLevel::value::DEBUG,
-                                bool console = false,
-                                const std::string &pattern = "") {
-    std::unique_ptr<LoggerBuilder> builder(new GlobalLoggerBuilder());
+namespace detail {
+// 抽取公共建造流程，消除门面初始化函数的代码冗余（DRY 原则）
+inline Logger::ptr build_helper(LoggerBuilder *builder,
+                                const std::string &name,
+                                Logger::Type type,
+                                LogLevel::value level,
+                                const std::string &logfile,
+                                size_t roll_size,
+                                bool console,
+                                const std::string &pattern) {
     builder->buildLoggerName(name);
     builder->buildLoggerLevel(level);
-    builder->buildLoggerType(Logger::Type::LOGGER_ASYNC);
+    builder->buildLoggerType(type);
     if (!pattern.empty()) {
         builder->buildFormatter(pattern);
     }
@@ -104,27 +46,61 @@ inline Logger::ptr create_async(const std::string &name,
     }
     return builder->build();
 }
+} // namespace detail
+
+// ==========================================
+// 快捷初始化函数族（极简门面，1 行搞定初始化）
+// 生产级防爆：默认日志过滤等级设为 INFO
+// ==========================================
+
+// 1. 纯控制台日志（开箱即用，零配置）
+inline void init_console(LogLevel::value level = LogLevel::value::INFO,
+                         const std::string &pattern = "") {
+    std::unique_ptr<LoggerBuilder> builder(new LocalLoggerBuilder());
+    LoggerManager::getInstance().setRootLogger(
+        detail::build_helper(builder.get(), "root", Logger::Type::LOGGER_SYNC, level, "", 0, true, pattern));
+}
+
+// 2. 同步文件日志（可选择是否同步输出到控制台）
+inline void init_sync(const std::string &logfile,
+                      LogLevel::value level = LogLevel::value::INFO,
+                      bool console = true,
+                      const std::string &pattern = "") {
+    std::unique_ptr<LoggerBuilder> builder(new LocalLoggerBuilder());
+    LoggerManager::getInstance().setRootLogger(
+        detail::build_helper(builder.get(), "root", Logger::Type::LOGGER_SYNC, level, logfile, 0, console, pattern));
+}
+
+// 3. 高性能异步日志（支持文件大小切片轮转，默认 10MB 滚动，可同时输出到控制台）
+inline void init_async(const std::string &logfile,
+                       size_t roll_size = 10 * 1024 * 1024,
+                       LogLevel::value level = LogLevel::value::INFO,
+                       bool console = true,
+                       const std::string &pattern = "") {
+    std::unique_ptr<LoggerBuilder> builder(new LocalLoggerBuilder());
+    LoggerManager::getInstance().setRootLogger(
+        detail::build_helper(builder.get(), "root", Logger::Type::LOGGER_ASYNC, level, logfile, roll_size, console, pattern));
+}
+
+// 4. 多模块专用：一行创建并全局注册独立异步日志器
+inline Logger::ptr create_async(const std::string &name,
+                                const std::string &logfile = "",
+                                size_t roll_size = 10 * 1024 * 1024,
+                                LogLevel::value level = LogLevel::value::INFO,
+                                bool console = false,
+                                const std::string &pattern = "") {
+    std::unique_ptr<LoggerBuilder> builder(new GlobalLoggerBuilder());
+    return detail::build_helper(builder.get(), name, Logger::Type::LOGGER_ASYNC, level, logfile, roll_size, console, pattern);
+}
 
 // 5. 多模块专用：一行创建并全局注册独立同步日志器
 inline Logger::ptr create_sync(const std::string &name,
                                const std::string &logfile = "",
-                               LogLevel::value level = LogLevel::value::DEBUG,
+                               LogLevel::value level = LogLevel::value::INFO,
                                bool console = false,
                                const std::string &pattern = "") {
     std::unique_ptr<LoggerBuilder> builder(new GlobalLoggerBuilder());
-    builder->buildLoggerName(name);
-    builder->buildLoggerLevel(level);
-    builder->buildLoggerType(Logger::Type::LOGGER_SYNC);
-    if (!pattern.empty()) {
-        builder->buildFormatter(pattern);
-    }
-    if (console) {
-        builder->buildSink<StdoutSink>();
-    }
-    if (!logfile.empty()) {
-        builder->buildSink<FileSink>(logfile);
-    }
-    return builder->build();
+    return detail::build_helper(builder.get(), name, Logger::Type::LOGGER_SYNC, level, logfile, 0, console, pattern);
 }
 
 // 快速获取指定日志器的极简别名
@@ -137,7 +113,7 @@ inline Logger::ptr to_logger(const Logger::ptr &l) { return l; }
 inline Logger::ptr to_logger(const std::string &name) { return getLogger(name); }
 inline Logger::ptr to_logger(const char *name) { return getLogger(name); }
 
-// 手动显式安全退出（可选，进程正常退出时已由 atexit 自动安全守护）
+// 手动显式安全退出（可选，进程正常退出时已由 RAII 自动安全守护）
 inline void shutdown() {
     LoggerManager::getInstance().shutdown();
 }
@@ -169,12 +145,33 @@ inline void fatal(const std::string &msg, const std::source_location loc = std::
 // 前端一：C 风格 printf 变参宏定义族
 // ==========================================
 
-// 1. 全局根日志器快捷打印（最常用，绝大多数业务直接调用此组）
+#if LOG_CPP20_OR_LATER
+// ISO C++20 标准变参宏（严格符合 C++20 __VA_OPT__ 规范）
+#define LOG_DEBUG(fmt, ...) (logger::rootLogger())->debug(__FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_INFO(fmt, ...)  (logger::rootLogger())->info(__FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_WARN(fmt, ...)  (logger::rootLogger())->warn(__FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_ERROR(fmt, ...) (logger::rootLogger())->error(__FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_FATAL(fmt, ...) (logger::rootLogger())->fatal(__FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__)
+
+#define LOG_DEBUG_TO(l, fmt, ...) (logger::to_logger(l))->debug(__FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_INFO_TO(l, fmt, ...)  (logger::to_logger(l))->info(__FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_WARN_TO(l, fmt, ...)  (logger::to_logger(l))->warn(__FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_ERROR_TO(l, fmt, ...) (logger::to_logger(l))->error(__FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__)
+#define LOG_FATAL_TO(l, fmt, ...) (logger::to_logger(l))->fatal(__FILE__, __LINE__, fmt __VA_OPT__(,) __VA_ARGS__)
+#else
+// C++17 及更低版本编译器扩展（GNU/MSVC 广泛支持的 ##__VA_ARGS__）
 #define LOG_DEBUG(fmt, ...) (logger::rootLogger())->debug(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_INFO(fmt, ...)  (logger::rootLogger())->info(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_WARN(fmt, ...)  (logger::rootLogger())->warn(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_ERROR(fmt, ...) (logger::rootLogger())->error(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_FATAL(fmt, ...) (logger::rootLogger())->fatal(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+
+#define LOG_DEBUG_TO(l, fmt, ...) (logger::to_logger(l))->debug(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_INFO_TO(l, fmt, ...)  (logger::to_logger(l))->info(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_WARN_TO(l, fmt, ...)  (logger::to_logger(l))->warn(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_ERROR_TO(l, fmt, ...) (logger::to_logger(l))->error(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define LOG_FATAL_TO(l, fmt, ...) (logger::to_logger(l))->fatal(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#endif
 
 // 极简简写宏别名
 #define LOGD(fmt, ...) LOG_DEBUG(fmt, ##__VA_ARGS__)
@@ -182,13 +179,6 @@ inline void fatal(const std::string &msg, const std::source_location loc = std::
 #define LOGW(fmt, ...) LOG_WARN(fmt, ##__VA_ARGS__)
 #define LOGE(fmt, ...) LOG_ERROR(fmt, ##__VA_ARGS__)
 #define LOGF(fmt, ...) LOG_FATAL(fmt, ##__VA_ARGS__)
-
-// 2. 指定特定日志器（支持传指针如 db_logger，也支持直接传名字如 "db"、"net"）
-#define LOG_DEBUG_TO(l, fmt, ...) (logger::to_logger(l))->debug(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
-#define LOG_INFO_TO(l, fmt, ...)  (logger::to_logger(l))->info(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
-#define LOG_WARN_TO(l, fmt, ...)  (logger::to_logger(l))->warn(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
-#define LOG_ERROR_TO(l, fmt, ...) (logger::to_logger(l))->error(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
-#define LOG_FATAL_TO(l, fmt, ...) (logger::to_logger(l))->fatal(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
 // ==========================================
 // 前端二：C++ 现代流式 << 宏定义族（支持等级短路）
@@ -221,4 +211,4 @@ inline void fatal(const std::string &msg, const std::source_location loc = std::
 #define LOG_S_ERROR(l) LOG_STREAM_ERROR_TO(l)
 #define LOG_S_FATAL(l) LOG_STREAM_FATAL_TO(l)
 
-#endif // __LOG_H__
+#endif // LOGGER_LOG_H_

@@ -1,5 +1,6 @@
-#ifndef __LOG_LEVEL_HPP__
-#define __LOG_LEVEL_HPP__
+#pragma once
+#ifndef LOGGER_LEVEL_HPP_
+#define LOGGER_LEVEL_HPP_
 
 #include <string>
 
@@ -35,4 +36,4 @@ public:
 
 } // namespace logger
 
-#endif // __LOG_LEVEL_HPP__
+#endif // LOGGER_LEVEL_HPP_

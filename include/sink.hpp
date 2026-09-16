@@ -1,5 +1,6 @@
-#ifndef __LOG_SINK_HPP__
-#define __LOG_SINK_HPP__
+#pragma once
+#ifndef LOGGER_SINK_HPP_
+#define LOGGER_SINK_HPP_
 
 #include "util.hpp"
 #include <iostream>
@@ -158,4 +159,4 @@ public:
 
 } // namespace logger
 
-#endif // __LOG_SINK_HPP__
+#endif // LOGGER_SINK_HPP_
