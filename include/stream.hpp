@@ -23,6 +23,10 @@ public:
     ~StreamMessage() {
         if (_logger) {
             _logger->submit(_level, _file, _line, _ss.str());
+            if (_level == LogLevel::value::FATAL) {
+                _logger->flush();
+                std::abort(); // 致命错误强制安全中止进程
+            }
         }
     }
 

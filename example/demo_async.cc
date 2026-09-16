@@ -40,6 +40,11 @@ int main() {
         w.join();
     }
 
+    std::cout << "\n测试中途调用 flush() 验证工作线程存活性（非破坏性刷新）：\n";
+    async_logger->flush();
+    LOG_INFO_TO(async_logger, "flush() 后继续成功写入日志！证明工作线程未被杀死，处于健康存活状态。");
+    async_logger->flush();
+
     std::cout << "\n=== 演示 4: 现代化 1 行初始化异步日志并全局使用 ===\n";
     logger::init_async("./logs/app_async_quick.log");
     LOG_INFO("极简异步初始化成功！线程安全的非阻塞双缓冲异步引擎已启动。");

@@ -215,7 +215,7 @@ protected:
 
 public:
     void flush() override {
-        _looper->stop();
+        _looper->flush();
         for (auto &sink : _sinks) {
             sink->flush();
         }

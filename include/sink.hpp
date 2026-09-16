@@ -7,6 +7,7 @@
 #include <memory>
 #include <sstream>
 #include <cassert>
+#include <mutex>
 
 namespace logger {
 
@@ -18,15 +19,20 @@ public:
     virtual void flush() {}
 };
 
-// 1. 标准输出策略（终端打印）
+// 1. 标准输出策略（终端打印，行原子性线程安全）
 class StdoutSink : public LogSink {
 public:
     void log(const char *data, size_t len) override {
+        // 全局控制台互斥锁，杜绝多日志器/跨线程并发写入时的字符交错与撕裂
+        std::unique_lock<std::mutex> lock(_stdout_mutex);
         std::cout.write(data, len);
     }
     void flush() override {
+        std::unique_lock<std::mutex> lock(_stdout_mutex);
         std::cout.flush();
     }
+private:
+    inline static std::mutex _stdout_mutex;
 };
 
 // 2. 固定文件落地策略（常驻文件流句柄，高性能追加）
@@ -79,6 +85,9 @@ public:
             std::cerr << "[Log Fatal] 打开滚动文件失败: " << pathname << std::endl;
             std::abort();
         }
+        // 精准校准当前物理文件初始大小，彻底避免服务重启追加写入时大小感知失真
+        _ofs.seekp(0, std::ios::end);
+        _cur_fsize = static_cast<size_t>(_ofs.tellp());
     }
 
     void log(const char *data, size_t len) override {
@@ -90,7 +99,8 @@ public:
                 std::cerr << "[Log Fatal] 打开滚动文件失败: " << pathname << std::endl;
                 std::abort();
             }
-            _cur_fsize = 0;
+            _ofs.seekp(0, std::ios::end);
+            _cur_fsize = static_cast<size_t>(_ofs.tellp());
         }
         _ofs.write(data, len);
         if (!_ofs.good()) {
