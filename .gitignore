@@ -12,6 +12,8 @@ log/
 logs/
 *.log
 *.txt
+test_runner
+test_run_dir/
 
 # 编辑器与IDE配置
 .vscode/
