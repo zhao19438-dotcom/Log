@@ -1,4 +1,4 @@
-﻿#include "test_framework.hpp"
+#include "test_framework.hpp"
 #include "../include/logger.hpp"
 
 TEST_CASE(ManagerTest, SingletonIdentity) {
@@ -14,7 +14,7 @@ TEST_CASE(ManagerTest, DefaultRootLoggerExists) {
 }
 
 TEST_CASE(ManagerTest, AddAndGetLogger) {
-    std::unique_ptr<logger::LoggerBuilder> builder(new logger::LocalLoggerBuilder());
+    auto builder = std::make_unique<logger::LocalLoggerBuilder>();
     builder->buildLoggerName("test_mgr_mod");
     builder->buildLoggerType(logger::Logger::Type::LOGGER_SYNC);
     auto l = builder->build();
@@ -28,7 +28,7 @@ TEST_CASE(ManagerTest, AddAndGetLogger) {
 }
 
 TEST_CASE(ManagerTest, DuplicateAddThrowsException) {
-    std::unique_ptr<logger::LoggerBuilder> builder(new logger::LocalLoggerBuilder());
+    auto builder = std::make_unique<logger::LocalLoggerBuilder>();
     builder->buildLoggerName("test_mgr_mod"); // 同名
     builder->buildLoggerType(logger::Logger::Type::LOGGER_SYNC);
     auto l = builder->build();

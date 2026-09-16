@@ -19,20 +19,26 @@
 
 namespace logger {
 
-// 跨平台安全格式化字符串辅助函数
-inline int safe_vasprintf(char **strp, const char *fmt, va_list ap) {
-#ifdef _WIN32
+// 跨平台安全格式化字符串辅助函数（RAII 原生，0 裸内存分配，天然异常安全）
+inline std::string format_vstring(const char *fmt, va_list ap) {
     va_list ap_copy;
     va_copy(ap_copy, ap);
+#ifdef _WIN32
     int len = _vscprintf(fmt, ap_copy);
-    va_end(ap_copy);
-    if (len < 0) return -1;
-    *strp = static_cast<char *>(malloc(len + 1));
-    if (!*strp) return -1;
-    return vsprintf_s(*strp, len + 1, fmt, ap);
 #else
-    return vasprintf(strp, fmt, ap);
+    int len = vsnprintf(nullptr, 0, fmt, ap_copy);
 #endif
+    va_end(ap_copy);
+    if (len < 0) {
+        return "[Log Error] 格式化日志消息失败！";
+    }
+    std::string result(len, '\0');
+#ifdef _WIN32
+    vsprintf_s(&result[0], len + 1, fmt, ap);
+#else
+    vsnprintf(&result[0], len + 1, fmt, ap);
+#endif
+    return result;
 }
 
 class SyncLogger;
@@ -133,16 +139,7 @@ public:
 
 protected:
     void log(LogLevel::value level, const char *file, size_t line, const char *fmt, va_list al) {
-        char *buf = nullptr;
-        std::string msg;
-        int len = safe_vasprintf(&buf, fmt, al);
-        if (len < 0) {
-            msg = "[Log Error] 格式化日志消息失败！";
-        } else {
-            msg.assign(buf, len);
-            free(buf);
-        }
-        submit(level, file, line, std::move(msg));
+        submit(level, file, line, format_vstring(fmt, al));
     }
 
 public:
@@ -324,6 +321,7 @@ public:
     }
 
     Logger::ptr rootLogger() {
+        std::unique_lock<std::mutex> lock(_mutex);
         return _root_logger;
     }
 
@@ -335,19 +333,25 @@ public:
     }
 
     void shutdown() {
-        if (_root_logger) {
-            _root_logger->flush();
+        // 先在锁内快照所有日志器指针，彻底杜绝遍历过程持锁导致的潜在锁级联与死锁风险
+        std::vector<Logger::ptr> loggers_to_flush;
+        {
+            std::unique_lock<std::mutex> lock(_mutex);
+            for (auto &pair : _loggers) {
+                if (pair.second) {
+                    loggers_to_flush.push_back(pair.second);
+                }
+            }
         }
-        std::unique_lock<std::mutex> lock(_mutex);
-        for (auto &pair : _loggers) {
-            pair.second->flush();
+        for (auto &logger : loggers_to_flush) {
+            logger->flush();
         }
     }
 
 private:
     LoggerManager() {
         // 默认初始化一个根日志器（名为 root，输出到控制台）
-        std::unique_ptr<LoggerBuilder> builder(new LocalLoggerBuilder());
+        auto builder = std::make_unique<LocalLoggerBuilder>();
         builder->buildLoggerName("root");
         _root_logger = builder->build();
         _loggers["root"] = _root_logger;

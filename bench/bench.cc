@@ -81,7 +81,7 @@ int main() {
     std::cout << "【3. 测试执行 (Test Execution)】\n";
 
     // 1. 创建同步测试日志器
-    std::unique_ptr<logger::LoggerBuilder> sync_builder(new logger::GlobalLoggerBuilder());
+    auto sync_builder = std::make_unique<logger::GlobalLoggerBuilder>();
     sync_builder->buildLoggerName("sync_bench");
     sync_builder->buildLoggerType(logger::Logger::Type::LOGGER_SYNC);
     sync_builder->buildFormatter("%m%n");
@@ -89,7 +89,7 @@ int main() {
     sync_builder->build();
 
     // 2. 创建异步测试日志器（双缓冲模式）
-    std::unique_ptr<logger::LoggerBuilder> async_builder(new logger::GlobalLoggerBuilder());
+    auto async_builder = std::make_unique<logger::GlobalLoggerBuilder>();
     async_builder->buildLoggerName("async_bench");
     async_builder->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC);
     async_builder->buildFormatter("%m%n");

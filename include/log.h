@@ -20,7 +20,7 @@ inline Logger::ptr rootLogger() {
 
 namespace detail {
 // 抽取公共建造流程，消除门面初始化函数的代码冗余（DRY 原则）
-inline Logger::ptr build_helper(LoggerBuilder *builder,
+inline Logger::ptr build_helper(LoggerBuilder &builder,
                                 const std::string &name,
                                 Logger::Type type,
                                 LogLevel::value level,
@@ -28,23 +28,23 @@ inline Logger::ptr build_helper(LoggerBuilder *builder,
                                 size_t roll_size,
                                 bool console,
                                 const std::string &pattern) {
-    builder->buildLoggerName(name);
-    builder->buildLoggerLevel(level);
-    builder->buildLoggerType(type);
+    builder.buildLoggerName(name);
+    builder.buildLoggerLevel(level);
+    builder.buildLoggerType(type);
     if (!pattern.empty()) {
-        builder->buildFormatter(pattern);
+        builder.buildFormatter(pattern);
     }
     if (console) {
-        builder->buildSink<StdoutSink>();
+        builder.buildSink<StdoutSink>();
     }
     if (!logfile.empty()) {
         if (roll_size > 0) {
-            builder->buildSink<RollSink>(logfile, roll_size);
+            builder.buildSink<RollSink>(logfile, roll_size);
         } else {
-            builder->buildSink<FileSink>(logfile);
+            builder.buildSink<FileSink>(logfile);
         }
     }
-    return builder->build();
+    return builder.build();
 }
 } // namespace detail
 
@@ -56,9 +56,9 @@ inline Logger::ptr build_helper(LoggerBuilder *builder,
 // 1. 纯控制台日志（开箱即用，零配置）
 inline void init_console(LogLevel::value level = LogLevel::value::INFO,
                          const std::string &pattern = "") {
-    std::unique_ptr<LoggerBuilder> builder(new LocalLoggerBuilder());
+    auto builder = std::make_unique<LocalLoggerBuilder>();
     LoggerManager::getInstance().setRootLogger(
-        detail::build_helper(builder.get(), "root", Logger::Type::LOGGER_SYNC, level, "", 0, true, pattern));
+        detail::build_helper(*builder, "root", Logger::Type::LOGGER_SYNC, level, "", 0, true, pattern));
 }
 
 // 2. 同步文件日志（可选择是否同步输出到控制台）
@@ -66,9 +66,9 @@ inline void init_sync(const std::string &logfile,
                       LogLevel::value level = LogLevel::value::INFO,
                       bool console = true,
                       const std::string &pattern = "") {
-    std::unique_ptr<LoggerBuilder> builder(new LocalLoggerBuilder());
+    auto builder = std::make_unique<LocalLoggerBuilder>();
     LoggerManager::getInstance().setRootLogger(
-        detail::build_helper(builder.get(), "root", Logger::Type::LOGGER_SYNC, level, logfile, 0, console, pattern));
+        detail::build_helper(*builder, "root", Logger::Type::LOGGER_SYNC, level, logfile, 0, console, pattern));
 }
 
 // 3. 高性能异步日志（支持文件大小切片轮转，默认 10MB 滚动，可同时输出到控制台）
@@ -77,9 +77,9 @@ inline void init_async(const std::string &logfile,
                        LogLevel::value level = LogLevel::value::INFO,
                        bool console = true,
                        const std::string &pattern = "") {
-    std::unique_ptr<LoggerBuilder> builder(new LocalLoggerBuilder());
+    auto builder = std::make_unique<LocalLoggerBuilder>();
     LoggerManager::getInstance().setRootLogger(
-        detail::build_helper(builder.get(), "root", Logger::Type::LOGGER_ASYNC, level, logfile, roll_size, console, pattern));
+        detail::build_helper(*builder, "root", Logger::Type::LOGGER_ASYNC, level, logfile, roll_size, console, pattern));
 }
 
 // 4. 多模块专用：一行创建并全局注册独立异步日志器
@@ -89,8 +89,8 @@ inline Logger::ptr create_async(const std::string &name,
                                 LogLevel::value level = LogLevel::value::INFO,
                                 bool console = false,
                                 const std::string &pattern = "") {
-    std::unique_ptr<LoggerBuilder> builder(new GlobalLoggerBuilder());
-    return detail::build_helper(builder.get(), name, Logger::Type::LOGGER_ASYNC, level, logfile, roll_size, console, pattern);
+    auto builder = std::make_unique<GlobalLoggerBuilder>();
+    return detail::build_helper(*builder, name, Logger::Type::LOGGER_ASYNC, level, logfile, roll_size, console, pattern);
 }
 
 // 5. 多模块专用：一行创建并全局注册独立同步日志器
@@ -99,8 +99,8 @@ inline Logger::ptr create_sync(const std::string &name,
                                LogLevel::value level = LogLevel::value::INFO,
                                bool console = false,
                                const std::string &pattern = "") {
-    std::unique_ptr<LoggerBuilder> builder(new GlobalLoggerBuilder());
-    return detail::build_helper(builder.get(), name, Logger::Type::LOGGER_SYNC, level, logfile, 0, console, pattern);
+    auto builder = std::make_unique<GlobalLoggerBuilder>();
+    return detail::build_helper(*builder, name, Logger::Type::LOGGER_SYNC, level, logfile, 0, console, pattern);
 }
 
 // 快速获取指定日志器的极简别名

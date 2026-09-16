@@ -115,12 +115,11 @@ int main() {
 #include "log.h"
 
 int main() {
-    std::unique_ptr<logger::LoggerBuilder> builder(new logger::GlobalLoggerBuilder());
-    builder->buildLoggerName("custom")
-           ->buildLoggerLevel(logger::LogLevel::value::DEBUG)
-           ->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC)
-           ->buildFormatter("[%d{%Y-%m-%d %H:%M:%S}][%p][%c][%f:%l] %m%n");
-
+    auto builder = std::make_unique<logger::GlobalLoggerBuilder>();
+    builder->buildLoggerName("custom");
+    builder->buildLoggerLevel(logger::LogLevel::value::DEBUG);
+    builder->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC);
+    builder->buildFormatter("[%d{%Y-%m-%d %H:%M:%S}][%p][%c][%f:%l] %m%n");
     builder->buildSink<logger::StdoutSink>();
     builder->buildSink<logger::RollSink>("./logs/custom_roll", 10 * 1024 * 1024);
     auto logger = builder->build();

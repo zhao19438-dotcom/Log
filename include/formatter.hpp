@@ -152,13 +152,13 @@ public:
         }
     }
 
-    void format(std::string &out, const LogMsg &msg) {
-        for (auto &item : _items) {
+    void format(std::string &out, const LogMsg &msg) const {
+        for (const auto &item : _items) {
             item->format(out, msg);
         }
     }
 
-    std::string format(const LogMsg &msg) {
+    std::string format(const LogMsg &msg) const {
         std::string out;
         out.reserve(256);
         format(out, msg);

@@ -36,7 +36,7 @@ private:
     inline static std::mutex _stdout_mutex;
 };
 
-// 2. 固定文件落地策略（常驻文件流句柄，高性能追加）
+// 2. 固定文件落地策略（常驻文件流句柄，高性能追加，线程安全）
 class FileSink : public LogSink {
 public:
     FileSink(const std::string &pathname) : _pathname(pathname) {
@@ -50,6 +50,7 @@ public:
     }
 
     void log(const char *data, size_t len) override {
+        std::lock_guard<std::mutex> lock(_mutex);
         _ofs.write(data, len);
         if (!_ofs.good()) {
             std::cerr << "[Log Error] 写入文件失败: " << _pathname << "\n";
@@ -57,12 +58,14 @@ public:
     }
 
     void flush() override {
+        std::lock_guard<std::mutex> lock(_mutex);
         if (_ofs.is_open()) {
             _ofs.flush();
         }
     }
 
     ~FileSink() {
+        std::lock_guard<std::mutex> lock(_mutex);
         if (_ofs.is_open()) {
             _ofs.flush();
             _ofs.close();
@@ -70,11 +73,12 @@ public:
     }
 
 private:
+    std::mutex _mutex;
     std::string _pathname;
     std::ofstream _ofs;
 };
 
-// 3. 滚动文件落地策略（按文件大小自动切片轮转）
+// 3. 滚动文件落地策略（按文件大小自动切片轮转，线程安全）
 class RollSink : public LogSink {
 public:
     RollSink(const std::string &basename, size_t max_fsize)
@@ -92,6 +96,7 @@ public:
     }
 
     void log(const char *data, size_t len) override {
+        std::lock_guard<std::mutex> lock(_mutex);
         if (_cur_fsize >= _max_fsize) {
             _ofs.close();
             std::string pathname = createNewFile();
@@ -111,12 +116,14 @@ public:
     }
 
     void flush() override {
+        std::lock_guard<std::mutex> lock(_mutex);
         if (_ofs.is_open()) {
             _ofs.flush();
         }
     }
 
     ~RollSink() {
+        std::lock_guard<std::mutex> lock(_mutex);
         if (_ofs.is_open()) {
             _ofs.flush();
             _ofs.close();
@@ -141,6 +148,7 @@ private:
     }
 
 private:
+    std::mutex _mutex;
     std::string _basename;
     size_t _max_fsize;
     size_t _cur_fsize;

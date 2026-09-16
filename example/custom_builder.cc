@@ -3,7 +3,7 @@
 
 int main() {
     // 使用建造者模式（Builder）进行深度定制：自定义格式串与多落地目标
-    std::unique_ptr<logger::LoggerBuilder> builder(new logger::GlobalLoggerBuilder());
+    auto builder = std::make_unique<logger::GlobalLoggerBuilder>();
     builder->buildLoggerName("custom");
     builder->buildLoggerLevel(logger::LogLevel::value::DEBUG);
     builder->buildLoggerType(logger::Logger::Type::LOGGER_ASYNC);
