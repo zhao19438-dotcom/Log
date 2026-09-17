@@ -98,16 +98,16 @@ private:
     }
 
 private:
-    std::atomic<bool> _running;
-    bool _is_processing;
-    Functor _callback;
-    std::mutex _mutex;
-    std::condition_variable _pop_cond;
-    std::condition_variable _flush_cond;
+    std::atomic<bool> _running;          // 调度器运行状态标志
+    bool _is_processing;                 // 后台消费处理中标志
+    Functor _callback;                   // 消费缓冲区数据的回调函数
+    std::mutex _mutex;                   // 缓冲区与状态互斥锁
+    std::condition_variable _pop_cond;   // 消费等待条件变量
+    std::condition_variable _flush_cond; // 刷盘等待条件变量
 
-    Buffer _tasks_push; // 生产缓冲区
-    Buffer _tasks_pop;  // 消费缓冲区
-    std::thread _thread;
+    Buffer _tasks_push;                  // 生产缓冲区
+    Buffer _tasks_pop;                   // 消费缓冲区
+    std::thread _thread;                 // 后台工作线程
 };
 
 } // namespace logger

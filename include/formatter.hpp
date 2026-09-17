@@ -62,7 +62,7 @@ public:
         out.append(ms_buf);
     }
 private:
-    std::string _time_fmt;
+    std::string _time_fmt; // 时间格式化子串
 };
 
 // %f：源文件名
@@ -134,7 +134,7 @@ public:
         out.append(_str);
     }
 private:
-    std::string _str;
+    std::string _str; // 普通文本字符串
 };
 
 // 日志格式化器
@@ -246,8 +246,8 @@ private:
     }
 
 private:
-    std::string _pattern;
-    std::vector<FormatItem::ptr> _items;
+    std::string _pattern;                // 格式化模式控制串
+    std::vector<FormatItem::ptr> _items; // 格式化子项列表
 };
 
 } // namespace logger

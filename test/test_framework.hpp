@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #ifndef TEST_FRAMEWORK_HPP_
 #define TEST_FRAMEWORK_HPP_
 
@@ -12,9 +12,9 @@
 namespace test_framework {
 
 struct TestCase {
-    std::string suite_name;
-    std::string test_name;
-    std::function<void()> func;
+    std::string suite_name;     // 测试套件名称
+    std::string test_name;      // 测试用例名称
+    std::function<void()> func; // 测试用例执行函数
 };
 
 class TestRegistry {
@@ -91,7 +91,7 @@ public:
     }
 
 private:
-    std::vector<TestCase> _tests;
+    std::vector<TestCase> _tests; // 注册的测试用例列表
 };
 
 struct AutoRegister {

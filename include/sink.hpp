@@ -33,7 +33,7 @@ public:
         std::cout.flush();
     }
 private:
-    inline static std::mutex _stdout_mutex;
+    inline static std::mutex _stdout_mutex; // 标准输出全局互斥锁
 };
 
 // 单文件追加写入落地
@@ -73,9 +73,9 @@ public:
     }
 
 private:
-    std::mutex _mutex;
-    std::string _pathname;
-    std::ofstream _ofs;
+    std::mutex _mutex;     // 文件写入互斥锁
+    std::string _pathname; // 目标日志文件路径
+    std::ofstream _ofs;    // 文件输出流
 };
 
 // 按照文件大小滚动的落地策略
@@ -150,12 +150,12 @@ private:
     }
 
 private:
-    std::mutex _mutex;
-    std::string _basename;
-    size_t _max_fsize;
-    size_t _cur_fsize;
-    size_t _count;
-    std::ofstream _ofs;
+    std::mutex _mutex;     // 滚动写入互斥锁
+    std::string _basename; // 滚动文件基础路径前缀
+    size_t _max_fsize;     // 单文件最大字节数阈值
+    size_t _cur_fsize;     // 当前文件已写入字节大小
+    size_t _count;         // 滚动文件生成序号计数
+    std::ofstream _ofs;    // 文件输出流
 };
 
 // 落地端工厂类

@@ -156,11 +156,11 @@ protected:
     virtual void logIt(const std::string &msg) = 0;
 
 protected:
-    std::mutex _mutex;
-    std::string _name;
-    std::atomic<LogLevel::value> _level;
-    Formatter::ptr _formatter;
-    std::vector<LogSink::ptr> _sinks;
+    std::mutex _mutex;                   // 日志器内部互斥锁
+    std::string _name;                   // 日志器唯一名称
+    std::atomic<LogLevel::value> _level; // 日志输出过滤门槛等级
+    Formatter::ptr _formatter;           // 日志格式化器
+    std::vector<LogSink::ptr> _sinks;    // 绑定的落地输出端列表
 };
 
 // 同步日志器
@@ -229,7 +229,7 @@ public:
     }
 
 private:
-    AsyncLooper::ptr _looper;
+    AsyncLooper::ptr _looper; // 异步调度器与后台工作线程
 };
 
 // 日志器建造者基类
@@ -283,11 +283,11 @@ public:
     }
 
 protected:
-    Logger::Type _logger_type;
-    std::string _logger_name;
-    LogLevel::value _level;
-    Formatter::ptr _formatter;
-    std::vector<LogSink::ptr> _sinks;
+    Logger::Type _logger_type;        // 日志器类型（同步/异步）
+    std::string _logger_name;         // 日志器名称
+    LogLevel::value _level;           // 日志输出过滤门槛等级
+    Formatter::ptr _formatter;        // 日志格式化器
+    std::vector<LogSink::ptr> _sinks; // 绑定的落地输出端列表
 };
 
 // 本地日志器建造者（构建后不自动注册到全局管理器）
@@ -383,9 +383,9 @@ private:
     LoggerManager &operator=(const LoggerManager &) = delete;
 
 private:
-    std::mutex _mutex;
-    Logger::ptr _root_logger;
-    std::unordered_map<std::string, Logger::ptr> _loggers;
+    std::mutex _mutex;                                    // 全局管理器互斥锁
+    Logger::ptr _root_logger;                             // 默认根日志器
+    std::unordered_map<std::string, Logger::ptr> _loggers;// 已注册日志器哈希映射表
 };
 
 inline Logger::ptr GlobalLoggerBuilder::build() {

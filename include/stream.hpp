@@ -32,11 +32,11 @@ public:
     }
 
 private:
-    Logger::ptr _logger;
-    LogLevel::value _level;
-    const char *_file;
-    size_t _line;
-    std::stringstream _ss;
+    Logger::ptr _logger;    // 目标日志器智能指针
+    LogLevel::value _level; // 日志输出级别
+    const char *_file;      // 源码文件名
+    size_t _line;           // 源码行号
+    std::stringstream _ss;  // 消息流式拼接缓冲区
 };
 
 } // namespace logger

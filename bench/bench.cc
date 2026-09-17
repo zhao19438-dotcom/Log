@@ -7,13 +7,13 @@
 #include <string>
 
 struct BenchResult {
-    std::string mode;
-    size_t threads;
-    size_t count;
-    double cost_sec;
-    double qps;
-    double throughput_mb;
-    double latency_us;
+    std::string mode;     // 运行模式描述
+    size_t threads;       // 并发线程数
+    size_t count;         // 写入日志总条数
+    double cost_sec;      // 总耗时（秒）
+    double qps;           // 每秒日志吞吐量
+    double throughput_mb; // 数据吞吐带宽（MB/s）
+    double latency_us;    // 单条生产均摊时延（微秒）
 };
 
 // 性能压测工具函数

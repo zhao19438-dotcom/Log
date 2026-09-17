@@ -121,10 +121,10 @@ private:
     }
 
 private:
-    size_t _reader_idx;
-    size_t _writer_idx;
-    std::vector<char> _v;
-    inline static std::atomic<size_t> _dropped_count{0};
+    size_t _reader_idx;                                 // 可读数据起始偏移量
+    size_t _writer_idx;                                 // 可写数据起始偏移量
+    std::vector<char> _v;                               // 缓冲区底层存储向量
+    inline static std::atomic<size_t> _dropped_count{0}; // 超出容量丢弃的日志计数
 };
 
 } // namespace logger
