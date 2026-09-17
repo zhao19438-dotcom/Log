@@ -327,13 +327,13 @@ public:
     }
 
     // 检查是否存在指定名称的日志器
-    bool hasLogger(const std::string &name) {
+    bool hasLogger(const std::string &name) const {
         std::unique_lock<std::mutex> lock(_mutex);
         return _loggers.find(name) != _loggers.end();
     }
 
     // 获取指定名称的日志器
-    Logger::ptr getLogger(const std::string &name) {
+    Logger::ptr getLogger(const std::string &name) const {
         std::unique_lock<std::mutex> lock(_mutex);
         auto it = _loggers.find(name);
         if (it == _loggers.end()) {
@@ -343,7 +343,7 @@ public:
     }
 
     // 获取默认根日志器
-    Logger::ptr rootLogger() {
+    Logger::ptr rootLogger() const {
         std::unique_lock<std::mutex> lock(_mutex);
         return _root_logger;
     }
@@ -388,7 +388,7 @@ private:
     LoggerManager &operator=(const LoggerManager &) = delete;
 
 private:
-    std::mutex _mutex;                                    // 全局管理器互斥锁
+    mutable std::mutex _mutex;                            // 全局管理器互斥锁
     Logger::ptr _root_logger;                             // 默认根日志器
     std::unordered_map<std::string, Logger::ptr> _loggers;// 已注册日志器哈希映射表
 };

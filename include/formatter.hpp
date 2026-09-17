@@ -18,13 +18,13 @@ class FormatItem {
 public:
     using ptr = std::shared_ptr<FormatItem>;
     virtual ~FormatItem() = default;
-    virtual void format(std::string &out, const LogMsg &msg) = 0;
+    virtual void format(std::string &out, const LogMsg &msg) const = 0;
 };
 
 // %m：日志正文
 class MsgFormatItem : public FormatItem {
 public:
-    void format(std::string &out, const LogMsg &msg) override {
+    void format(std::string &out, const LogMsg &msg) const override {
         out.append(msg._payload);
     }
 };
@@ -32,7 +32,7 @@ public:
 // %p：日志等级
 class LevelFormatItem : public FormatItem {
 public:
-    void format(std::string &out, const LogMsg &msg) override {
+    void format(std::string &out, const LogMsg &msg) const override {
         out.append(LogLevel::toString(msg._level));
     }
 };
@@ -43,7 +43,7 @@ public:
     TimeFormatItem(const std::string &fmt = "%Y-%m-%d %H:%M:%S") : _time_fmt(fmt) {
         if (_time_fmt.empty()) _time_fmt = "%Y-%m-%d %H:%M:%S";
     }
-    void format(std::string &out, const LogMsg &msg) override {
+    void format(std::string &out, const LogMsg &msg) const override {
         auto time_t_now = std::chrono::system_clock::to_time_t(msg._time);
         auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(msg._time.time_since_epoch()) % 1000;
         
@@ -72,7 +72,7 @@ private:
 // %f：源文件名
 class FileFormatItem : public FormatItem {
 public:
-    void format(std::string &out, const LogMsg &msg) override {
+    void format(std::string &out, const LogMsg &msg) const override {
         out.append(msg._file);
     }
 };
@@ -80,7 +80,7 @@ public:
 // %l：代码行号
 class LineFormatItem : public FormatItem {
 public:
-    void format(std::string &out, const LogMsg &msg) override {
+    void format(std::string &out, const LogMsg &msg) const override {
         out.append(std::to_string(msg._line));
     }
 };
@@ -88,21 +88,17 @@ public:
 // %t：线程 ID
 class ThreadFormatItem : public FormatItem {
 public:
-    void format(std::string &out, const LogMsg &) override {
-        thread_local std::string tid_str;
-        if (tid_str.empty()) {
-            std::ostringstream ss;
-            ss << std::this_thread::get_id();
-            tid_str = ss.str();
-        }
-        out.append(tid_str);
+    void format(std::string &out, const LogMsg &msg) const override {
+        std::ostringstream ss;
+        ss << msg._tid;
+        out.append(ss.str());
     }
 };
 
 // %c：日志器名称
 class LoggerFormatItem : public FormatItem {
 public:
-    void format(std::string &out, const LogMsg &msg) override {
+    void format(std::string &out, const LogMsg &msg) const override {
         out.append(msg._logger_name);
     }
 };
@@ -110,7 +106,7 @@ public:
 // %T：制表符
 class TabFormatItem : public FormatItem {
 public:
-    void format(std::string &out, const LogMsg &) override {
+    void format(std::string &out, const LogMsg &) const override {
         out.append("\t");
     }
 };
@@ -118,7 +114,7 @@ public:
 // %n：换行符
 class NLineFormatItem : public FormatItem {
 public:
-    void format(std::string &out, const LogMsg &) override {
+    void format(std::string &out, const LogMsg &) const override {
         out.append("\n");
     }
 };
@@ -127,7 +123,7 @@ public:
 class OtherFormatItem : public FormatItem {
 public:
     OtherFormatItem(const std::string &str) : _str(str) {}
-    void format(std::string &out, const LogMsg &) override {
+    void format(std::string &out, const LogMsg &) const override {
         out.append(_str);
     }
 private:

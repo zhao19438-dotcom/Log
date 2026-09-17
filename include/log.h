@@ -137,19 +137,19 @@ inline void shutdown() {
 
 #if LOG_HAS_SOURCE_LOCATION
 // 原生函数调用接口（基于 source_location 自动注入文件名与行号）
-inline void debug(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+inline void debug(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
     rootLogger()->debug(msg, loc);
 }
-inline void info(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+inline void info(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
     rootLogger()->info(msg, loc);
 }
-inline void warn(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+inline void warn(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
     rootLogger()->warn(msg, loc);
 }
-inline void error(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+inline void error(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
     rootLogger()->error(msg, loc);
 }
-inline void fatal(const std::string &msg, const std::source_location loc = std::source_location::current()) {
+inline void fatal(const std::string &msg, const std::source_location &loc = std::source_location::current()) {
     rootLogger()->fatal(msg, loc);
 }
 #endif
