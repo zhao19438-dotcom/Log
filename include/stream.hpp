@@ -10,7 +10,7 @@ namespace logger {
 // 流式日志临时对象，析构时提交日志
 class StreamMessage {
 public:
-    StreamMessage(const Logger::ptr &logger, LogLevel::value level, const char *file, size_t line)
+    StreamMessage(const Logger::ptr &logger, LogLevel::value level, const std::string &file, size_t line)
         : _logger(logger), _level(level), _file(file), _line(line) {}
 
     // 流式输出运算符重载
@@ -34,7 +34,7 @@ public:
 private:
     Logger::ptr _logger;    // 目标日志器智能指针
     LogLevel::value _level; // 日志输出级别
-    const char *_file;      // 源码文件名
+    std::string _file;      // 源码文件名
     size_t _line;           // 源码行号
     std::stringstream _ss;  // 消息流式拼接缓冲区
 };

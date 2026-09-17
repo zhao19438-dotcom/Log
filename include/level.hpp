@@ -20,7 +20,9 @@ public:
     };
 
     // 将级别枚举转换为大写字符串
-    static const char *toString(LogLevel::value level) {
+    // @param level 日志等级枚举值
+    // @return 返回对应的级别名称字符串
+    static std::string toString(LogLevel::value level) {
         switch (level) {
             case LogLevel::value::DEBUG: return "DEBUG";
             case LogLevel::value::INFO:  return "INFO";

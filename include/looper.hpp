@@ -67,6 +67,12 @@ public:
         }
     }
 
+    // 将日志字符串写入生产缓冲区
+    // @param msg 日志消息字符串
+    void push(const std::string &msg) {
+        push(msg.data(), msg.size());
+    }
+
 private:
     // 工作线程主循环
     void worker_loop() {

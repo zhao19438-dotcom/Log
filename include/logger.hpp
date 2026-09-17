@@ -41,6 +41,11 @@ inline std::string format_vstring(const char *fmt, va_list ap) {
     return result;
 }
 
+// 格式化变参字符串（std::string 重载）
+inline std::string format_vstring(const std::string &fmt, va_list ap) {
+    return format_vstring(fmt.c_str(), ap);
+}
+
 class SyncLogger;
 class AsyncLogger;
 
@@ -79,7 +84,7 @@ public:
     // @param file 源文件名
     // @param line 代码行号
     // @param msg 日志正文内容
-    void submit(LogLevel::value level, const char *file, size_t line, std::string &&msg) {
+    void submit(LogLevel::value level, const std::string &file, size_t line, std::string &&msg) {
         if (!shouldLog(level)) return;
         LogMsg lm(_name, file, line, std::move(msg), level);
         std::string out;
@@ -96,23 +101,23 @@ public:
     va_end(al)
 
     // C 风格变参日志输出接口
-    void debug(const char *file, size_t line, const char *fmt, ...) {
+    void debug(const std::string &file, size_t line, const char *fmt, ...) {
         LOG_VARIADIC_IMPL(LogLevel::value::DEBUG);
     }
 
-    void info(const char *file, size_t line, const char *fmt, ...) {
+    void info(const std::string &file, size_t line, const char *fmt, ...) {
         LOG_VARIADIC_IMPL(LogLevel::value::INFO);
     }
 
-    void warn(const char *file, size_t line, const char *fmt, ...) {
+    void warn(const std::string &file, size_t line, const char *fmt, ...) {
         LOG_VARIADIC_IMPL(LogLevel::value::WARN);
     }
 
-    void error(const char *file, size_t line, const char *fmt, ...) {
+    void error(const std::string &file, size_t line, const char *fmt, ...) {
         LOG_VARIADIC_IMPL(LogLevel::value::ERROR);
     }
 
-    void fatal(const char *file, size_t line, const char *fmt, ...) {
+    void fatal(const std::string &file, size_t line, const char *fmt, ...) {
         if (shouldLog(LogLevel::value::FATAL)) {
             va_list al;
             va_start(al, fmt);
@@ -145,7 +150,7 @@ public:
 #endif
 
 protected:
-    void log(LogLevel::value level, const char *file, size_t line, const char *fmt, va_list al) {
+    void log(LogLevel::value level, const std::string &file, size_t line, const char *fmt, va_list al) {
         submit(level, file, line, format_vstring(fmt, al));
     }
 
@@ -179,7 +184,7 @@ protected:
         std::unique_lock<std::mutex> lock(_mutex);
         if (_sinks.empty()) return;
         for (auto &sink : _sinks) {
-            sink->log(msg.data(), msg.size());
+            sink->log(msg);
         }
     }
 
@@ -209,7 +214,7 @@ public:
 
 protected:
     void logIt(const std::string &msg) override {
-        _looper->push(msg.data(), msg.size());
+        _looper->push(msg);
     }
 
     // 将缓冲区日志写入各落地端

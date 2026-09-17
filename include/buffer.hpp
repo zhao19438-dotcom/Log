@@ -24,6 +24,9 @@ public:
         : _reader_idx(0), _writer_idx(0), _v(capacity) {}
 
     // 向缓冲区追加数据，空间不足时自动扩容
+    // @param data 字节数据指针
+    // @param len 数据长度
+    // @return 追加是否成功
     bool push(const char *data, size_t len) {
         if (!ensureEnoughSize(len)) {
             _dropped_count.fetch_add(1, std::memory_order_relaxed);
@@ -32,6 +35,13 @@ public:
         std::memcpy(&_v[_writer_idx], data, len);
         _writer_idx += len;
         return true;
+    }
+
+    // 向缓冲区追加日志字符串
+    // @param msg 待追加的字符串
+    // @return 追加是否成功
+    bool push(const std::string &msg) {
+        return push(msg.data(), msg.size());
     }
 
     // 可读数据字节数

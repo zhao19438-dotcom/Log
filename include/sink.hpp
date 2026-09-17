@@ -18,6 +18,9 @@ public:
     using ptr = std::shared_ptr<LogSink>;
     virtual ~LogSink() = default;
     virtual void log(const char *data, size_t len) = 0;
+    virtual void log(const std::string &msg) {
+        log(msg.data(), msg.size());
+    }
     virtual void flush() {}
 };
 
@@ -27,6 +30,10 @@ public:
     void log(const char *data, size_t len) override {
         std::unique_lock<std::mutex> lock(_stdout_mutex);
         std::cout.write(data, len);
+    }
+    void log(const std::string &msg) override {
+        std::unique_lock<std::mutex> lock(_stdout_mutex);
+        std::cout.write(msg.data(), msg.size());
     }
     void flush() override {
         std::unique_lock<std::mutex> lock(_stdout_mutex);
@@ -55,6 +62,10 @@ public:
         if (!_ofs.good()) {
             std::cerr << "[Log Error] 写入文件失败: " << _pathname << "\n";
         }
+    }
+
+    void log(const std::string &msg) override {
+        log(msg.data(), msg.size());
     }
 
     void flush() override {
@@ -116,6 +127,10 @@ public:
         _cur_fsize += len;
     }
 
+    void log(const std::string &msg) override {
+        log(msg.data(), msg.size());
+    }
+
     void flush() override {
         std::lock_guard<std::mutex> lock(_mutex);
         if (_ofs.is_open()) {
@@ -141,12 +156,11 @@ private:
 #else
         localtime_r(&t, &tm_time);
 #endif
-        char time_buf[64];
-        strftime(time_buf, sizeof(time_buf), "%Y%m%d_%H%M%S", &tm_time);
+        std::string time_buf(64, '\0');
+        size_t len = strftime(&time_buf[0], time_buf.size(), "%Y%m%d_%H%M%S", &tm_time);
+        time_buf.resize(len);
 
-        std::stringstream ss;
-        ss << _basename << "_" << time_buf << "_" << (_count++) << ".log";
-        return ss.str();
+        return _basename + "_" + time_buf + "_" + std::to_string(_count++) + ".log";
     }
 
 private:

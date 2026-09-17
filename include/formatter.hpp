@@ -53,13 +53,17 @@ public:
 #else
         localtime_r(&time_t_now, &tm_time);
 #endif
-        char buf[128];
-        strftime(buf, sizeof(buf), _time_fmt.c_str(), &tm_time);
-        
-        char ms_buf[16];
-        snprintf(ms_buf, sizeof(ms_buf), ".%03d", static_cast<int>(ms.count()));
-        out.append(buf);
-        out.append(ms_buf);
+        std::string time_str(128, '\0');
+        size_t len = strftime(&time_str[0], time_str.size(), _time_fmt.c_str(), &tm_time);
+        time_str.resize(len);
+        out.append(time_str);
+
+        std::string ms_str = std::to_string(static_cast<int>(ms.count()));
+        out.push_back('.');
+        if (ms_str.size() < 3) {
+            out.append(3 - ms_str.size(), '0');
+        }
+        out.append(ms_str);
     }
 private:
     std::string _time_fmt; // 时间格式化子串
@@ -69,9 +73,7 @@ private:
 class FileFormatItem : public FormatItem {
 public:
     void format(std::string &out, const LogMsg &msg) override {
-        if (msg._file) {
-            out.append(msg._file);
-        }
+        out.append(msg._file);
     }
 };
 
@@ -86,19 +88,14 @@ public:
 // %t：线程 ID
 class ThreadFormatItem : public FormatItem {
 public:
-    void format(std::string &out, const LogMsg &msg) override {
-        thread_local char tid_buf[32] = {0};
-        thread_local size_t tid_len = 0;
-        if (tid_len == 0) {
+    void format(std::string &out, const LogMsg &) override {
+        thread_local std::string tid_str;
+        if (tid_str.empty()) {
             std::ostringstream ss;
             ss << std::this_thread::get_id();
-            std::string s = ss.str();
-            tid_len = s.size();
-            if (tid_len >= sizeof(tid_buf)) tid_len = sizeof(tid_buf) - 1;
-            memcpy(tid_buf, s.data(), tid_len);
-            tid_buf[tid_len] = '\0';
+            tid_str = ss.str();
         }
-        out.append(tid_buf, tid_len);
+        out.append(tid_str);
     }
 };
 
